@@ -14,7 +14,8 @@
   "license": "ISC",
   "packageManager": "pnpm@10.30.3",
   "dependencies": {
-    "express": "^5.2.1"
+    "express": "^5.2.1",
+    "openai": "^6.32.0"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",
