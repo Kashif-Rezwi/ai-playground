@@ -1,0 +1,13 @@
+{
+    "extends": "./configs/tsconfig/base.json",
+    "compilerOptions": {
+        "strict": true,
+        "target": "ES2022",
+        "module": "commonjs"
+    },
+    "files": [],
+    "exclude": [
+        "node_modules",
+        "dist"
+    ]
+}

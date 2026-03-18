@@ -1,0 +1,22 @@
+{
+    "name": "ai-playground",
+    "version": "1.0.0",
+    "private": true,
+    "packageManager": "pnpm@10.30.3",
+    "scripts": {
+        "dev": "turbo run dev",
+        "build": "turbo run build",
+        "lint": "turbo run lint",
+        "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\""
+    },
+    "devDependencies": {
+        "typescript": "^5.0.0",
+        "turbo": "^2.0.0",
+        "eslint": "^8.0.0",
+        "prettier": "^3.0.0",
+        "dotenv": "^16.0.0",
+        "@typescript-eslint/parser": "^7.0.0",
+        "@typescript-eslint/eslint-plugin": "^7.0.0",
+        "eslint-config-prettier": "^9.0.0"
+    }
+}
