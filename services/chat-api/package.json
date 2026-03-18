@@ -14,7 +14,8 @@
   "license": "ISC",
   "packageManager": "pnpm@10.30.3",
   "dependencies": {
-    "express": "^5.2.1"
+    "express": "^5.2.1",
+    "@ai-playground/llm-core": "workspace:*"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",

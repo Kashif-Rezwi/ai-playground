@@ -1,0 +1,17 @@
+{
+  "name": "@ai-playground/llm-core",
+  "version": "1.0.0",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "lint": "eslint src/"
+  },
+  "dependencies": {
+    "openai": "^6.32.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}
