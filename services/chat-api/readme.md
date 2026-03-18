@@ -125,13 +125,13 @@ No UI. No database. No streaming (that's Phase 1.3). Just a raw, transparent API
 
 By completing this mini-app, you will:
 
-- [ ] Understand the role-based message structure (`system`, `user`, `assistant`)
-- [ ] Know what a context window is and how to reason about token budgets
-- [ ] See the direct impact of `temperature` on output variation
-- [ ] Understand the difference between `temperature` and `top_p`
-- [ ] Know how `max_tokens` affects response length and truncation
-- [ ] Be able to read and interpret a raw LLM API response object
-- [ ] Understand what the model actually receives vs what you typed
+- [x] Understand the role-based message structure (`system`, `user`, `assistant`)
+- [x] Know what a context window is and how to reason about token budgets
+- [x] See the direct impact of `temperature` on output variation
+- [x] Understand the difference between `temperature` and `top_p`
+- [x] Know how `max_tokens` affects response length and truncation
+- [x] Be able to read and interpret a raw LLM API response object
+- [x] Understand what the model actually receives vs what you typed
 
 ---
 

@@ -15,7 +15,7 @@
   "packageManager": "pnpm@10.30.3",
   "dependencies": {
     "express": "^5.2.1",
-    "openai": "^6.32.0"
+    "@ai-playground/llm-core": "workspace:*"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",
