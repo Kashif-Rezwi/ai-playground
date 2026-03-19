@@ -4,7 +4,7 @@ import readline from "readline";
 import dotenv from "dotenv";
 import { trimHistory } from "./trimHistory";
 import { countTokens } from "./countTokens";
-import { MODEL, SYSTEM_PROMPT } from "./config";
+import { MODEL, SYSTEM_PROMPT, MAX_RESPONSE_TOKENS } from "./config";
 
 dotenv.config({ path: "../../.env" });
 
@@ -31,7 +31,7 @@ export async function chat(userInput: string): Promise<void> {
     const response = await openaiClient.chat.completions.create({
         model: MODEL,
         messages: conversationHistory,
-        max_tokens: 500,
+        max_tokens: MAX_RESPONSE_TOKENS,
         temperature: 0.7,
     });
 
