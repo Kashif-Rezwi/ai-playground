@@ -108,6 +108,28 @@ importers:
         specifier: ^5.9.3
         version: 5.9.3
 
+  services/text-generation:
+    dependencies:
+      '@ai-playground/llm-core':
+        specifier: workspace:*
+        version: link:../../packages/llm-core
+      express:
+        specifier: ^5.2.1
+        version: 5.2.1
+      openai:
+        specifier: ^6.32.0
+        version: 6.32.0(zod@4.3.6)
+    devDependencies:
+      '@types/express':
+        specifier: ^5.0.6
+        version: 5.0.6
+      tsx:
+        specifier: ^4.21.0
+        version: 4.21.0
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+
 packages:
 
   '@babel/code-frame@7.29.0':
