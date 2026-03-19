@@ -191,14 +191,14 @@ No UI. No persistence to disk (that's later). Just a clean, transparent conversa
 
 By completing this mini-app, you will:
 
-- [ ] Understand why LLMs are stateless and what that means for your app
-- [ ] Know how to maintain and send conversation history correctly
-- [ ] Understand the alternating `user → assistant` message structure rule
-- [ ] See how token count grows with each turn in real time
-- [ ] Implement at least one context management / trimming strategy
-- [ ] Understand the difference between conversation history and long-term memory
-- [ ] Know how to count tokens accurately (not by word count)
-- [ ] Understand what "context window budget" means and how to manage it
+- [x] Understand why LLMs are stateless and what that means for your app
+- [x] Know how to maintain and send conversation history correctly
+- [x] Understand the alternating `user → assistant` message structure rule
+- [x] See how token count grows with each turn in real time
+- [x] Implement at least one context management / trimming strategy
+- [x] Understand the difference between conversation history and long-term memory
+- [x] Know how to count tokens accurately (not by word count)
+- [x] Understand what "context window budget" means and how to manage it
 
 ---
 
