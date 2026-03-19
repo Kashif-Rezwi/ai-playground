@@ -1,8 +1,8 @@
-import { Message } from "./types";
-import { countTokens } from "./countTokens";
-import { MAX_CONTEXT_TOKENS, MAX_RESPONSE_TOKENS } from "./config";
+import { Message } from "../types";
+import { countTokens } from "../countTokens";
+import { MAX_CONTEXT_TOKENS, MAX_RESPONSE_TOKENS } from "../config";
 
-export function trimHistory(messages: Message[]): Message[] {
+export function tokenAwareTrimming(messages: Message[]): Message[] {
     const historyBudget = MAX_CONTEXT_TOKENS - MAX_RESPONSE_TOKENS;
 
     // Always keep system prompt at index 0, trim oldest messages
