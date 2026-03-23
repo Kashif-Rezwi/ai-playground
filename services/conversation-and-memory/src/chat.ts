@@ -2,9 +2,12 @@ import OpenAI from "openai";
 import { Message } from "./types";
 import readline from "readline";
 import dotenv from "dotenv";
-import { trimHistory } from "./trimHistory";
 import { countTokens } from "./countTokens";
 import { MODEL, SYSTEM_PROMPT, MAX_RESPONSE_TOKENS } from "./config";
+import { tokenAwareTrimming } from "./trim-strategy/tokenAwareTrimming";
+import { hardTruncation } from "./trim-strategy/hardTruncation";
+import { slidingWindow } from "./trim-strategy/slidingWindow";
+import { summarization } from "./trim-strategy/summarization/summarization";
 
 dotenv.config({ path: "../../.env" });
 
@@ -20,8 +23,18 @@ export async function chat(userInput: string): Promise<void> {
     // 1. Append new user message
     conversationHistory.push({ role: "user", content: userInput });
 
-    // 2. Trim if over budget
-    conversationHistory = trimHistory(conversationHistory);
+    // 2. Trim if over budget - Token Aware Trimming
+    // conversationHistory = tokenAwareTrimming(conversationHistory);
+
+    // 2. Trim if over budget - Hard Truncation
+    // conversationHistory = hardTruncation(conversationHistory);
+
+    // 2. Trim if over budget - Hard Truncation
+    // conversationHistory = slidingWindow(conversationHistory);
+
+    // 2. Trim if over budget - Summarization
+    conversationHistory = await summarization(conversationHistory, openaiClient);
+
 
     // 3. Log token count BEFORE sending
     const tokenCount = countTokens(conversationHistory);
