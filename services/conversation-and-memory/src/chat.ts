@@ -6,6 +6,7 @@ import { countTokens } from "./countTokens";
 import { MODEL, SYSTEM_PROMPT, MAX_RESPONSE_TOKENS } from "./config";
 import { tokenAwareTrimming } from "./trim-strategy/tokenAwareTrimming";
 import { hardTruncation } from "./trim-strategy/hardTruncation";
+import { slidingWindow } from "./trim-strategy/slidingWindow";
 
 dotenv.config({ path: "../../.env" });
 
@@ -25,7 +26,11 @@ export async function chat(userInput: string): Promise<void> {
     // conversationHistory = tokenAwareTrimming(conversationHistory);
 
     // 2. Trim if over budget - Hard Truncation
-    conversationHistory = hardTruncation(conversationHistory);
+    // conversationHistory = hardTruncation(conversationHistory);
+
+    // 2. Trim if over budget - Hard Truncation
+    conversationHistory = slidingWindow(conversationHistory);
+
 
     // 3. Log token count BEFORE sending
     const tokenCount = countTokens(conversationHistory);
