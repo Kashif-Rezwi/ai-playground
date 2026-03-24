@@ -32,6 +32,7 @@ async function chat(userInput: string) {
 
     let fullResponse = "";
     let ttftValue = 0;
+    let tokenCount = 0;
 
     // 3. Loop over the stream as chunks arrive
     for await (const chunk of stream) {
@@ -56,10 +57,13 @@ async function chat(userInput: string) {
 
         // Accumulate it in memory
         fullResponse += delta;
+        tokenCount++;
     }
 
-    // 4. Add a final newline when the stream completely finishes
-    console.log("\n");
+    // 4. Calculate tokens per second and add a final newline when the stream completely finishes
+    const totalResponseTime = (Date.now() - startTime) / 1000;
+    const tokensPerSec = (tokenCount / totalResponseTime).toFixed(2);
+    console.log(`\n\n\x1b[90m⚡ Speed: ${tokensPerSec} tokens/sec\x1b[0m`);
 
     // 5. Append assistant response to history
     conversationHistory.push({ role: "assistant", content: fullResponse });
