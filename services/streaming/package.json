@@ -1,5 +1,5 @@
 {
-  "name": "@ai-playground/conversation-and-memory",
+  "name": "@ai-playground/streaming",
   "version": "1.0.0",
   "description": "",
   "main": "src/chat.ts",

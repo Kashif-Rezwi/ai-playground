@@ -130,6 +130,28 @@ importers:
         specifier: ^5.9.3
         version: 5.9.3
 
+  services/streaming:
+    dependencies:
+      express:
+        specifier: ^5.2.1
+        version: 5.2.1
+      openai:
+        specifier: ^6.32.0
+        version: 6.32.0(zod@4.3.6)
+      tiktoken:
+        specifier: ^1.0.22
+        version: 1.0.22
+    devDependencies:
+      '@types/express':
+        specifier: ^5.0.6
+        version: 5.0.6
+      tsx:
+        specifier: ^4.21.0
+        version: 4.21.0
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+
   services/text-generation:
     dependencies:
       express:
