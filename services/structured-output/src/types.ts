@@ -1,0 +1,1 @@
+export type ReviewMode = "prompt" | "json" | "schema";
