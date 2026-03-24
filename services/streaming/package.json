@@ -1,0 +1,23 @@
+{
+  "name": "@ai-playground/streaming",
+  "version": "1.0.0",
+  "description": "",
+  "main": "src/chat.ts",
+  "scripts": {
+    "dev": "npx tsx src/chat.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.30.3",
+  "dependencies": {
+    "express": "^5.2.1",
+    "openai": "^6.32.0",
+    "tiktoken": "^1.0.22"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  }
+}
