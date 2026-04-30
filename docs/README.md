@@ -106,7 +106,6 @@ Each mini-app should be *minimal but complete* — no boilerplate, no abstractio
 - One agent orchestrating multiple sub-agents
 - Task decomposition and delegation
 - Aggregating results from parallel workers
-- *(You've already built this in ReviewAI — now understand it from first principles)*
 
 **4.4 — Reflection & Self-Critique**
 - Agent reviews its own output before returning
@@ -240,5 +239,3 @@ Each mini-app should be *minimal but complete* — no boilerplate, no abstractio
 ## One Rule to Follow
 
 > For every mini-app — write a short `README` explaining **what the concept is**, **how you implemented it**, and **what you learned**. This doubles as portfolio content and forces deep understanding.
-
-This roadmap should keep your playground busy for months. Want me to help you plan the first few mini-apps in detail?
