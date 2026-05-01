@@ -13,12 +13,12 @@ const openaiClient = new OpenAI({
 
 app.use(express.json());
 
-// app.use("/", (req, res) => {
-//     res.send("Hello World!");
-// })
+app.use("/health", (req, res) => {
+    res.send(`⚡️ basic-text-generation server is up! Send a prompt to start generating responses.`);
+})
 
 app.post("/generate-text", async (req, res) => {
-    const { systemPrompt, userPrompt, temperature, maxTokens } = req.body;
+    const { systemPrompt, userPrompt, temperature, topP, maxTokens } = req.body;
 
     if (!userPrompt) {
         return res.status(400).json({ error: "User prompt is required" });
@@ -43,6 +43,7 @@ app.post("/generate-text", async (req, res) => {
             model: "gpt-4o-mini",
             messages: messages,
             temperature: temperature ?? 0.7,
+            top_p: topP ?? 1.0,
             max_tokens: maxTokens ?? 500,
         })
 
@@ -56,5 +57,5 @@ app.post("/generate-text", async (req, res) => {
 })
 
 app.listen(port, () => {
-    console.log(`[server]: Server is running at http://localhost:${port}`);
+    console.log(`[basic-text-generation]: Server is running at http://localhost:${port}`);
 })
