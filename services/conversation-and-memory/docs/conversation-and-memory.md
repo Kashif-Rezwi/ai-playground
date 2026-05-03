@@ -206,45 +206,179 @@ By completing this mini-app, it will help with:
 
 ## Experiments to Run
 
-| Experiment | What to observe |
-|---|---|
-| Ask the model something in turn 1, reference it in turn 5 | Does it remember correctly? |
-| Print the full history array before each API call | See exactly what the model receives |
-| Let the conversation run until trimming kicks in | Watch the model lose earlier context |
-| Implement summarization — compare quality to truncation | Which feels more coherent? |
-| Send two consecutive `user` messages without an `assistant` in between | What error does the API return? |
-| Start a new session without clearing history | Does persistence across sessions matter? |
-| Ask about something you said in a "previous session" (without history) | Confirm the model has zero memory |
+Once the app is working, run each of these deliberately. Each one is designed to surface a specific concept from this phase.
+
+---
+
+### Experiment 1 — Watching the History Grow
+**Covers:** Conversation history structure, token growth per turn, the `history` command
+
+**Setup:** Start the app. Use the default system prompt (`"You are a helpful assistant."`).
+
+**Steps:**
+1. Send: `"My name is Alex and I work as a backend engineer."`
+2. After the response, type `history` — inspect the message array
+3. Send: `"What are the most common databases used in backend systems?"`
+4. After the response, type `history` again
+5. Repeat for 3 more turns. Watch the `📊 [TOKENS]` log line on each turn.
+
+**What to observe:**
+- How does the history array structure look after each turn? Does it always alternate `user → assistant`?
+- What does `input_tokens` / `prompt_tokens` look like on turn 1 vs turn 5?
+- Does token count grow linearly or in jumps?
+
+**Expected insight:** Each turn adds two messages (user + assistant) to history. Token cost grows with every exchange — what was 100 tokens on turn 1 may be 600+ by turn 5. This is the core cost/latency tradeoff of conversational AI.
+
+---
+
+### Experiment 2 — The Model Uses What You Send It
+**Covers:** Statelessness, history as the model's only context
+
+**Steps:**
+1. Send: `"I'm building a REST API using Node.js and Express. My main concern is rate limiting."`
+2. Send: `"What library would you recommend for that?"`
+3. Send: `"How would I configure it to allow 100 requests per minute per IP?"`
+4. Now type `clear` to reset history
+5. Send: `"How would I configure it to allow 100 requests per minute per IP?"`
+
+**What to observe:**
+- In steps 2–3, does the model correctly reference the Node.js/Express context from turn 1?
+- After `clear`, does the model respond coherently or ask for clarification?
+- Type `history` after `clear` — what is the state of the array?
+
+**Expected insight:** The model’s apparent “memory” comes entirely from the conversation history array managed and sent with each request. After `clear`, the model has no awareness of any prior exchange. The app is the memory system, not the model.
+
+---
+
+### Experiment 3 — Triggering Summarization
+**Covers:** Summarization strategy, the `🧠 [SUMMARIZE]` log, token budget enforcement
+
+**Setup:** Ensure summarization is the active strategy in `chat.ts` (it is by default). The threshold is 2000 tokens total / 1500 for history.
+
+**Steps:**
+1. Have a long, detailed conversation — share personal or technical context in each turn. Use verbose prompts like:
+   - `"Tell me everything about how garbage collection works in JavaScript — cover all major algorithms."`
+   - `"Now compare that to how Go handles memory management in detail."`
+   - `"What are the trade-offs between the two approaches in high-throughput server applications?"`
+   - Continue until you see the `🧠 [SUMMARIZE]` log appear
+2. After summarization triggers, type `history` and inspect the array
+3. Ask: `"What was the first language we discussed?"`
+
+**What to observe:**
+- At what turn does summarization trigger?
+- In the history array after summarization, what does the injected summary message look like? (`"Summary of earlier conversation: ..."`)
+- Does the model still correctly answer questions about early turns using the summary?
+- Compare token count before and after summarization kicks in
+
+**Expected insight:** Summarization compresses old context into a single dense message. The model can still reference early topics — but through a lossy summary, not the original words. Semantic meaning is preserved, verbatim details are not.
+
+---
+
+### Experiment 4 — Comparing Context Management Strategies
+**Covers:** Hard truncation, sliding window, token-aware trimming — tradeoffs between strategies
+
+**Setup:** The active strategy is set by commenting/uncommenting lines in `chat.ts`. Run this experiment three times, once per strategy.
+
+**Steps (repeat for each strategy):**
+1. Set the strategy (comment/uncomment the relevant line in `chat.ts`)
+2. Start a fresh conversation. Send these 6 turns:
+   - `"My project is called Orion and it's a real-time analytics platform."`
+   - `"It processes about 50,000 events per second at peak load."`
+   - `"We use Kafka for ingestion and ClickHouse for storage."`
+   - `"What are common bottlenecks at this scale?"`
+   - `"How would you approach horizontal scaling for the ingestion layer?"`
+   - `"What did I say the project was called?"` ← key reference test
+3. Watch the trim/truncation log on each turn (`⚠️ [TRIM]`, `✂️ [TRUNCATE]`, `🪟 [SLIDING WINDOW]`)
+4. Note the response to the final question
+
+**What to observe:**
+- Does the model correctly answer `"What did I say the project was called?"` with each strategy?
+- At what turn does each strategy kick in? (watch logs)
+- How does hard truncation (`✂️`) compare to sliding window (`🪟`) in terms of how many messages it keeps?
+- Does token-aware trimming (`⚠️`) feel more gradual compared to the others?
+
+**Expected insight:** Hard truncation is blunt — it drops messages in bulk. Sliding window preserves complete turn pairs. Token-aware trimming is the most precise but trims one message at a time. None of them are perfect — the right choice depends on your use case.
+
+---
+
+### Experiment 5 — Statelessness Across Sessions
+**Covers:** In-memory history, no persistence across restarts, long-term memory distinction
+
+**Steps:**
+1. Start the app and share something specific: `"My API key is stored in an env file called .env.production and the project lives at ~/code/myapp."`
+2. Continue the conversation for a few more turns
+3. Stop the app completely (`Ctrl+C` or `exit`)
+4. Restart the app
+5. Send: `"Where did I say the project lives?"`
+
+**What to observe:**
+- Does the model have any awareness of the previous session?
+- What does the `📜 [HISTORY]` output look like on a fresh start?
+- Compare this to what happens mid-session if ask the same question (it should know)
+
+**Expected insight:** History is in-memory only. Restarting the app wipes all conversation state. The model doesn't retain anything — the app doesn't either. Persistent memory across sessions requires a database, which is the focus of Phase 5.
+
+---
+
+### Experiment 6 — Token Counting Accuracy
+**Covers:** `tiktoken` token counting, token overhead per message, why word count is wrong
+
+**Setup:** Watch the `📊 [TOKENS]` log on every turn.
+
+**Steps:**
+1. Send a plain English message of about 20 words — record the reported `input_tokens` / `prompt_tokens`
+2. Send a message of similar word count but containing a code block:
+   ```
+   "Here is a function: function debounce(fn, delay) { let t; return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), delay); }; } What does it do?"
+   ```
+   Record `input_tokens` / `prompt_tokens`
+3. Send a very short message: `"Hi."` — record `input_tokens` / `prompt_tokens`
+4. Compare the delta between a short and long system prompt by restarting the app with a verbose system prompt vs the default one-liner
+
+**What to observe:**
+- Does code tokenize to more or fewer tokens than equivalent-length prose?
+- Even for `"Hi."`, how many tokens are reported? (hint: there's per-message overhead — 4 tokens per message for role/formatting)
+- How much does the system prompt alone consume from the 1500-token history budget?
+
+**Expected insight:** The app uses `tiktoken` with 4 tokens of overhead per message for role and formatting. A "short" code snippet often tokenizes heavier than it looks. This is why token counting must use a real tokenizer — word estimates routinely undercount by 30–50% for technical content.
 
 ---
 
 ## Common Mistakes to Avoid
 
 **Mistake 1 — Assuming the model remembers between API calls**  
-It doesn't. Every call is a blank slate. If you don't send history, it's gone.
+Every call is a blank slate. The model has no awareness of prior turns unless the full history is explicitly sent with each request. There is no server-side session state.
 
-**Mistake 2 — Trimming the system prompt**  
-Never remove the system message to make room. It should be the last thing you'd ever cut.
+**Mistake 2 — Trimming the system prompt to save tokens**  
+The system prompt defines the model's behavior and persona for the entire session. It must always be at index 0 and must never be removed by any trim strategy. All four strategies in this app preserve it unconditionally.
 
 **Mistake 3 — Counting tokens by word count**  
-Always use a proper tokenizer. Word-based estimates will silently overflow your context window.
+Always use a proper tokenizer (this app uses `tiktoken` with `encoding_for_model("gpt-4o-mini")`). Word-based estimates undercount by 30–50% for code and technical content. Silent overflows cause `context_length_exceeded` errors at runtime.
 
 **Mistake 4 — Not reserving space for the response**  
-Your token budget calculation must account for `max_tokens`. The context window is shared between input and output.
+The context window is shared between input and output. The app allocates `max_tokens: 500` for the response and only allows `1500` tokens for history (`2000 - 500`). Not reserving this space means the model can get cut off mid-response or fail entirely.
 
-**Mistake 5 — Breaking the alternating message rule**  
-`user → assistant → user → assistant` — always. Consecutive same-role messages will cause API errors or unpredictable behavior.
+**Mistake 5 — Breaking the alternating message structure**  
+History must always follow `user → assistant → user → assistant`. Consecutive same-role messages will cause an API error. The hard truncation strategy in this app includes an explicit safety check: if truncation leaves an orphaned `assistant` message immediately after the system prompt, it removes that message before sending.
+
+**Mistake 6 — Triggering summarization on every turn**  
+Summarization makes a second API call to compress old history. Calling it every turn doubles latency and cost. This app only triggers it when token count actually exceeds the budget — not preemptively. Build the same gate into any summarization strategy.
+
+**Mistake 7 — Assuming summarization is lossless**  
+The summary is a compressed, semantic approximation — not a transcript. Verbatim details (exact phrasing, specific numbers, code snippets) are often lost. This app's summarization prompt is tuned for density and factual accuracy (`temperature: 0.3`), but it still cannot preserve everything. Design for graceful degradation.
 
 ---
 
 ## Key Takeaways
 
-- LLMs have no memory — your app is the memory system
-- Sending full conversation history on every call is not a hack — it's the intended design
-- Token count grows linearly with conversation length — this is a real cost and latency concern
-- Context management is an engineering problem, not an AI problem — you decide the strategy
-- The difference between "history" and "memory" matters more as your systems get complex
-- Everything you build here is the foundation for RAG, agents, and long-term memory systems later
+- LLMs have no memory — the app is the memory system. History is just an array the app manages and sends on every call (Experiment 2, 5)
+- Sending full conversation history on every call is not a hack — it is the intended design. The model is always doing single-turn completion on everything sent to it (Experiment 1)
+- Token count grows with every exchange — a 10-turn conversation can cost 10× the tokens of a single-turn call. Watch the `📊 [TOKENS]` log to see this in real time (Experiment 1)
+- Context management is an engineering problem, not an AI problem — the right strategy depends on whether coherence, cost, or simplicity is the priority. No strategy is universally correct (Experiment 4)
+- Token counting must use a real tokenizer like `tiktoken`. Word counts routinely undercount technical content by 30–50%, causing silent context overflows (Experiment 6)
+- Summarization preserves semantic meaning but loses verbatim detail — it adds latency from a second API call and should only trigger when actually needed (Experiment 3)
+- In-memory history disappears on restart. There is no persistence here — long-term memory across sessions requires a database, covered in Phase 5 (Experiment 5)
+- The alternating `user → assistant` rule is enforced by the API, not just a convention — breaking it causes errors. The hard truncation strategy includes a safety check precisely because naive trimming can create orphaned messages (Common Mistake 5)
 
 ---
 
