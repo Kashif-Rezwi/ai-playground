@@ -6,13 +6,13 @@
 
 ## What Is This?
 
-In Phase 1.1 you sent a single prompt and got a single response. That was a **stateless, single-turn call** — the model had no knowledge of anything before or after that one message.
+In Phase 1.1, a single prompt produced a single response. That setup is a **stateless, single-turn call** — the model has no awareness of anything before or after that one interaction.
 
-Real conversational AI isn't single-turn. It needs to remember what was said, reference earlier context, and build on previous exchanges. But here's the catch — **LLMs are stateless by design**. The model has no memory between API calls. It remembers nothing.
+Real conversational AI doesn’t work that way. It needs to reference earlier context, build on previous messages, and maintain continuity across interactions. The challenge is that **LLMs are stateless by design**. There is no built-in memory between API calls.
 
-So how does ChatGPT "remember" what you said three messages ago?
+So how does ChatGPT seem to remember something mentioned three messages earlier?
 
-This mini-app answers that question, and makes you implement it from scratch.
+This mini-app explores that question and guides the implementation from scratch.
 
 ---
 
@@ -20,11 +20,11 @@ This mini-app answers that question, and makes you implement it from scratch.
 
 ### The Statelessness Problem
 
-Every API call to an LLM is completely independent. When you send a second message, the model has absolutely no recollection of the first one unless you explicitly re-send it.
+Every API call to an LLM is independent. When a second message is sent, the model has no awareness of the first unless that context is explicitly included again.
 
-This means **you** — the developer — are responsible for maintaining conversation state. The model doesn't hold memory. Your application does.
+This means the responsibility of maintaining conversation state lies with the developer. The model itself does not retain memory; the application manages it.
 
-This is one of the most important mental shifts in building AI systems. The "memory" you see in chat products is an illusion built by the application layer, not a feature of the model itself.
+This is a key mindset shift when building AI systems. The “memory” experienced in chat applications is not an inherent capability of the model, but something constructed at the application layer.
 
 ---
 
@@ -32,12 +32,13 @@ This is one of the most important mental shifts in building AI systems. The "mem
 
 The solution is simple but powerful: **send the entire conversation history on every API call.**
 
-Every time the user sends a new message, you:
-1. Append the new `user` message to your history array
-2. Send the full array (system + all previous turns + new message) to the API
+Each time a new user message is received:
+
+1. Append the new `user` message to the conversation history array
+2. Send the complete history (system message, all previous turns, and the new message) to the API
 3. Receive the `assistant` response
-4. Append the `assistant` response to your history array
-5. Repeat
+4. Append the `assistant` response to the history array
+5. Repeat the process for every new message
 
 The model receives the full conversation each time and uses it as context to generate a coherent continuation. From the model's perspective, it's always just doing single-turn completion — but the "single turn" now contains the entire conversation.
 
@@ -54,13 +55,14 @@ Notice what's happening: **each turn grows the total token count.** Turn 1 might
 
 ### The Context Window Problem
 
-This is where Phase 1.1's context window concept becomes a real engineering constraint.
+This is where the context window concept from Phase 1.1 becomes a real engineering constraint.
 
-Every model has a maximum context window (measured in tokens). As conversation history grows, you eventually hit that limit. When you do, the API either:
+Every model has a maximum context window, measured in tokens. As the conversation history grows, that limit is eventually reached. When that happens, the API will either:
+
 - **Throws an error** — you exceeded the limit
 - **Silently truncates** — older messages get dropped (provider-dependent)
 
-Neither is acceptable in a production system. You need a strategy.
+Neither outcome is acceptable in a production system. A clear strategy is required to manage and control how much context is sent with each request.
 
 ---
 
@@ -103,7 +105,7 @@ When history gets too long, use the LLM itself to summarize the older portion of
 ---
 
 #### Strategy 4 — Token-Aware Trimming
-Count tokens precisely. Trim the oldest messages one by one until the total fits within your target budget (leave room for the response too).
+Count tokens accurately, then remove the oldest messages one at a time until the total fits within the target limit, keeping enough space reserved for the model’s response.
 
 ```
 While total_tokens > budget:
@@ -178,27 +180,27 @@ A minimal interactive CLI chat loop that:
 2. Accepts user input in a loop (REPL-style)
 3. Appends each user message to history, sends full history to API, appends assistant response
 4. **Logs token usage** on every turn so you can watch it grow
-5. Implements at least **one context management strategy** (your choice) with a configurable token budget
+5. Implements at least **one context management strategy** with a configurable token budget
 6. Logs a warning when trimming or summarizing kicks in
 7. Supports a `clear` command to reset history
 8. Supports a `history` command to print the full current message array
 
-No UI. No persistence to disk (that's later). Just a clean, transparent conversation loop you can inspect at every step.
+No UI and no disk persistence at this stage. Focus on a clean, transparent conversation loop that can be inspected step by step.
 
 ---
 
-## What You'll Learn
+## What This Covers
 
-By completing this mini-app, you will:
+By completing this mini-app, it will help with:
 
-- [x] Understand why LLMs are stateless and what that means for your app
-- [x] Know how to maintain and send conversation history correctly
-- [x] Understand the alternating `user → assistant` message structure rule
-- [x] See how token count grows with each turn in real time
-- [x] Implement at least one context management / trimming strategy
-- [x] Understand the difference between conversation history and long-term memory
-- [x] Know how to count tokens accurately (not by word count)
-- [x] Understand what "context window budget" means and how to manage it
+- [x] Understanding why LLMs are stateless and what that implies for application design
+- [x] Learning how to maintain and send conversation history correctly
+- [x] Understanding the alternating `user → assistant` message structure
+- [x] Observing how token usage grows with each interaction
+- [x] Implementing at least one strategy for managing or trimming context
+- [x] Understanding the distinction between short-term conversation history and long-term memory
+- [x] Learning how to count tokens accurately rather than relying on word count
+- [x] Understanding what a context window budget is and how to manage it effectively
 
 ---
 
