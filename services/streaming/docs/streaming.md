@@ -6,11 +6,11 @@
 
 ## What Is This?
 
-In Phase 1.1 and 1.2, every API call followed the same pattern — you send a request, you **wait**, and eventually the full response arrives at once. This is called a **blocking** or **batch** response.
+In Phase 1.1 and 1.2, every API call followed the same pattern — a request is sent, then a wait occurs, and eventually the full response arrives all at once. This is called a **blocking** or **batch** response.
 
 For short responses this feels fine. But for longer generations — a detailed explanation, a code review, a long analysis — the user stares at a blank screen for 3–10 seconds before anything appears. That's a terrible experience.
 
-Streaming fixes this. Instead of waiting for the model to finish generating the *entire* response before sending it, the API **pushes tokens to you as they are generated** — one by one, in real time.
+Streaming changes this behavior. Instead of waiting for the model to generate the entire response first, the API sends tokens as they are produced, one by one, in real time.
 
 This phase is about understanding *how* that works under the hood, not just calling `.stream()` on an SDK method.
 
@@ -22,7 +22,7 @@ This phase is about understanding *how* that works under the hood, not just call
 
 LLMs generate text **autoregressively** — one token at a time. Token 2 depends on token 1. Token 3 depends on tokens 1 and 2. The model cannot generate token 50 without first generating tokens 1–49.
 
-This means the model *already has* token 1 ready long before it finishes generating the full response. Without streaming, the API holds all those tokens in a buffer and sends them only after the final token is generated. With streaming, each token is forwarded to you the moment it exists.
+This means the model *already has* token 1 ready long before it finishes generating the full response. Without streaming, the API holds all those tokens in a buffer and sends them only after the final token is generated. With streaming, each token is forwarded immediately as it becomes available.
 
 The result: **perceived latency drops dramatically.** The user sees the first word in ~300ms instead of waiting 5 seconds for the full paragraph.
 
@@ -74,7 +74,7 @@ Each chunk from the API is not just raw text — it's a structured object. A typ
 }
 ```
 
-The `delta` field contains only the **new content** in this chunk — not the full response so far. You accumulate these deltas yourself to reconstruct the full message.
+The `delta` field includes only the new piece of content in that chunk, not the full response. These pieces are accumulated to rebuild the complete message.
 
 The final chunk has `finish_reason` set to `"stop"` (or `"length"` if it hit `max_tokens`) and an empty delta.
 
@@ -84,9 +84,9 @@ The final chunk has `finish_reason` set to `"stop"` (or `"length"` if it hit `ma
 
 Backpressure is what happens when the **producer generates data faster than the consumer can process it**.
 
-In streaming LLM responses, the model generates tokens at a fairly steady rate. Your consumer (the code reading the stream) needs to keep up. If it falls behind — due to slow rendering, heavy processing, or a slow network — chunks pile up in a buffer.
+In streaming LLM responses, tokens are generated at a steady pace, and the consumer reading the stream needs to keep up. If it falls behind due to slow rendering, heavy processing, or network delays, incoming chunks begin to accumulate in a buffer.
 
-In a simple CLI app this rarely matters. But in production systems — especially when you're doing something with each chunk (parsing, storing, forwarding to another stream) — backpressure becomes a real concern.
+In a simple CLI app, this usually isn’t an issue. In production systems, especially when each chunk is processed, stored, or forwarded elsewhere, backpressure becomes an important factor to handle.
 
 **How to handle it:**
 - Process chunks as lightweight as possible (accumulate text, don't parse on every chunk)
@@ -152,28 +152,28 @@ In a well-optimized system, TTFT should be under 500ms for most requests. Stream
 
 ### Error Handling in Streams
 
-Streams can fail mid-way. The connection can drop after 10 tokens have been sent. The model can hit an error mid-generation. Your app needs to handle this gracefully:
+Streams can fail mid-way. The connection might drop after only a few tokens, or the model could encounter an error during generation. The application should handle these cases carefully:
 
-- **Track whether the stream completed** — did you receive the `[DONE]` sentinel or did the connection close unexpectedly?
-- **Partial responses** — decide what to do with an incomplete assistant message (discard it, show it with a warning, retry)
-- **Timeouts** — set a timeout on the stream connection; don't let it hang indefinitely
-- **Retry logic** — for transient network errors, you may want to retry the full request (you cannot resume a dropped stream mid-way)
+* **Track completion** — verify whether the `[DONE]` sentinel was received or if the connection ended unexpectedly
+* **Handle partial responses** — decide how to treat incomplete output, whether to discard it, display it with a warning, or retry
+* **Set timeouts** — ensure the stream does not remain open indefinitely
+* **Implement retry logic** — for temporary network issues, retry the entire request since a dropped stream cannot be resumed mid-way
 
 ---
 
 ### Streaming with Conversation History
 
-Streaming integrates cleanly with your Phase 1.2 conversation loop with one important rule:
+Streaming integrates cleanly with Phase 1.2 conversation loop with one important rule:
 
 > **Never append a partial streamed response to conversation history.**
 
-Wait until the stream is fully complete, then append the full accumulated `assistant` message. If you append mid-stream and the stream fails, you'll have a corrupted history with a truncated assistant message — which will confuse the model on the next turn.
+Wait until the stream is fully complete, then append the full accumulated `assistant` message. Appending during the stream can lead to issues. If the stream fails midway, the history will contain a truncated assistant message, which can confuse the model in the next interaction.
 
 ---
 
 ## What This App Builds
 
-Extend your Phase 1.2 conversation loop to:
+Extend the Phase 1.2 conversation loop to:
 
 1. Switch the API call to **streaming mode** (`stream: true`)
 2. Read the SSE stream chunk by chunk using an async iterator
@@ -182,13 +182,13 @@ Extend your Phase 1.2 conversation loop to:
 5. Measure and log **Time to First Token (TTFT)** and **total generation time**
 6. Only append the completed response to conversation history after the stream ends
 7. Handle a mid-stream connection drop gracefully — log a warning, discard the partial response
-8. Support both streaming and non-streaming mode via an environment variable flag so you can compare them side by side
+8. Support both streaming and non-streaming mode via an environment variable flag so behavior can be compared side by side.
 
-No UI. The terminal *is* the streaming interface here. Watching tokens appear one by one in your CLI is the whole point.
+No UI is needed. The terminal acts as the interface, where observing tokens appear one by one in the CLI demonstrates the streaming process.
 
 ---
 
-## What You'll Learn
+## What This Covers
 
 By completing this mini-app, you will:
 
