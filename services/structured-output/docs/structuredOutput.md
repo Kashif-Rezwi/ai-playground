@@ -280,7 +280,7 @@ No UI. No database. No conversation history. One code snippet in, one structured
 
 ---
 
-## What You'll Learn
+## What This Covers
 
 By completing this mini-app, you will:
 
@@ -297,51 +297,147 @@ By completing this mini-app, you will:
 
 ## Experiments to Run
 
-| Experiment | What to observe |
-|---|---|
-| Use prompt-only approach, run 10 times | How often does the format break? |
-| Use JSON mode, run 10 times | Does it always produce valid JSON? Does the schema hold? |
-| Use schema-enforced mode, run 10 times | How does reliability compare? |
-| Pass a deliberately complex schema (deeply nested) | Does the provider handle it? Any errors? |
-| Remove a required field from your prompt description | Does the model still populate it? |
-| Send a response that fails Zod validation back to the model | Does the correction pattern work? |
-| Try `.parse()` vs `.safeParse()` on a bad response | See how each handles failure |
+Once the app is working, run each of these deliberately. Each one is designed to surface a specific concept from this phase.
 
 ---
 
-## Common Mistakes to Avoid
+### Experiment 1 — Three Approaches Side by Side
+**Covers:** Prompt-only, JSON mode, schema-enforced structured output — reliability comparison
 
-**Mistake 1 — Trusting JSON mode to enforce schema shape**
-JSON mode only guarantees valid JSON syntax — not that the fields match your schema. Always validate with Zod after parsing.
+**Setup:** The app supports running all three approaches via a flag. Use the same code snippet for every run.
 
-**Mistake 2 — Using recursive or overly complex schemas**
-Not all providers support recursive schemas or deeply nested `$ref` patterns. Keep schemas flat where possible.
+**Steps:**
+1. Run the prompt-only approach 5 times with the same snippet — record each raw response
+2. Run JSON mode 5 times — log the parsed JSON and note whether it matches the expected schema
+3. Run schema-enforced mode 5 times — compare consistency across runs
+4. In the prompt-only runs, look for responses that include apology text, markdown fences, or trailing prose outside the JSON block
 
-**Mistake 3 — Not handling `.safeParse()` failures**
-Always check `result.success` before accessing `result.data`. Assume it can fail.
+**What to observe:**
+- How many prompt-only runs produce parseable JSON without any manual cleanup?
+- Does JSON mode always produce valid JSON? Does it always match the expected schema shape?
+- In schema-enforced mode, is the output shape identical across all 5 runs?
+- Which approach fails most often and in what way?
 
-**Mistake 4 — Trying to stream and parse JSON simultaneously**
-Buffer first, parse after `[DONE]`. Streaming JSON parsing is an optimization, not a starting point.
+**Expected insight:** Prompt-only is non-deterministic — the model may comply or may not, and there's no enforcement. JSON mode guarantees syntax, not schema. Schema-enforced mode is the only approach that guarantees both. This experiment makes that difference viscerally clear.
 
-**Mistake 5 — Skipping business logic validation**
-Schema validation tells you the shape is correct. It doesn't tell you the values make sense. Always add a layer of domain validation on top.
+---
+
+### Experiment 2 — Zod Validation in Action
+**Covers:** Zod `.parse()` vs `.safeParse()`, schema mismatch handling, runtime validation
+
+**Setup:** Use the schema-enforced mode. Temporarily disable schema enforcement at the API level so the model can return anything, then re-enable it after.
+
+**Steps:**
+1. With schema enforcement disabled, ask: `"Review this code: x = 1 + 1"` — observe the raw response
+2. Run `zodSchema.safeParse(rawResponse)` on the result — log `result.success`, `result.error`
+3. Now try `zodSchema.parse(rawResponse)` on the same bad response — observe what happens vs `safeParse`
+4. Re-enable schema enforcement and run the same snippet — does `safeParse` now return `result.success: true`?
+
+**What to observe:**
+- What does `result.error` look like when the response doesn't match the schema? Is it readable?
+- What happens when `.parse()` fails vs when `.safeParse()` fails? Which one crashes the process?
+- Does the schema-enforced API response pass `.safeParse()` on the first try, every time?
+
+**Expected insight:** `.parse()` throws on failure — it's fatal in a production pipeline. `.safeParse()` returns a typed result object you can check before accessing `.data`. Always use `.safeParse()` in production and handle the failure branch explicitly.
+
+---
+
+### Experiment 3 — Retry With Correction
+**Covers:** Validation failure recovery, retry-with-correction pattern, max retry cap
+
+**Setup:** Force a validation failure by temporarily making the Zod schema stricter than what the model returns (e.g., add a required field the model doesn't know about). Watch the retry log.
+
+**Steps:**
+1. Add a required `authorEmail` field to the Zod schema but do not mention it in the prompt
+2. Run the app — it will fail Zod validation on the first attempt
+3. Watch the `[RETRY 1/2]` log line — inspect the message sent back to the model with the Zod error appended
+4. After the second retry, check whether the model could produce the missing field or whether it exhausted all retries
+5. Remove the artificial field, re-run, and confirm clean validation on the first try
+
+**What to observe:**
+- What does the correction message sent to the model look like? Is the Zod error message human-readable enough for the model to understand?
+- Does the model successfully correct the output on retry 1, or does it take 2?
+- What happens when all retries are exhausted — does the app fail loudly or silently?
+
+**Expected insight:** The retry-with-correction pattern works because Zod error messages are structured and descriptive — the model can understand what went wrong and fix it. But retries are not free: each one adds latency and cost. The pattern is a safety net, not a crutch. Fix the schema and prompt first.
+
+---
+
+### Experiment 4 — Schema Complexity Limits
+**Covers:** Provider schema support, nested objects, `$ref` patterns, schema constraints
+
+**Setup:** Progressively deepen the schema. Start with the default schema, then add complexity in steps.
+
+**Steps:**
+1. Run the default schema — confirm it works end to end
+2. Add a deeply nested object: `issues[].context.file.path` (3 levels of nesting) — run the app, observe whether the provider accepts the schema
+3. Add a `$ref` self-reference (recursive schema) to the issues array — run and observe
+4. Remove the recursive ref, add an `anyOf` with two possible object shapes on the `metrics` field — observe
+
+**What to observe:**
+- At what nesting depth does the provider start returning an error or silently ignoring schema constraints?
+- Does the provider reject the recursive `$ref` at the API level, or does it fail silently?
+- What error message is returned when a schema feature is unsupported?
+
+**Expected insight:** Providers implement JSON Schema support selectively. Recursive schemas and certain `anyOf` patterns are the most commonly unsupported features. When a schema fails, flatten it — use an `enum` or `string` instead of a recursive type. Know your provider's limits before designing complex schemas.
+
+---
+
+### Experiment 5 — Buffered vs Streaming for Structured Output
+**Covers:** Structured output and streaming tension, partial JSON parsing, buffer-then-parse pattern
+
+**Setup:** The app runs in buffered mode by default. For this experiment, temporarily enable streaming and attempt to parse each chunk as it arrives.
+
+**Steps:**
+1. Enable streaming mode — attempt `JSON.parse(chunk.delta)` inside the `for await...of` loop
+2. Log the error thrown on each partial-JSON parse attempt
+3. Now collect all deltas into a single `fullResponse` string and parse only at the end — confirm it succeeds
+4. Compare latency: does buffering for the full response feel noticeably slower than seeing streamed tokens?
+
+**What to observe:**
+- How many chunks does the response arrive in? What does a mid-stream chunk look like as raw JSON?
+- At what point in the stream does the output become valid parseable JSON?
+- Is the added latency from waiting for the full response noticeable for a structured payload of this size?
+
+**Expected insight:** Partial JSON is unparseable by design — a half-received object is syntactically invalid. For structured output, streaming tokens to screen and then parsing at the end is the correct hybrid pattern. For background pipelines where no UX is needed, buffered mode is simpler and more reliable.
+
+---
+
+### Experiment 6 — Approach Performance & Token Usage
+**Covers:** Token usage comparison across approaches, latency measurement, logging
+
+**Setup:** Watch the approach, retry count, token usage, and latency logs on every run. Use the same code snippet across all three approaches.
+
+**Steps:**
+1. Run the same snippet through prompt-only, JSON mode, and schema-enforced — record `input_tokens`, `output_tokens`, and total latency for each
+2. Run schema-enforced mode 5 times — average the latency. Compare to JSON mode averaged over 5 runs
+3. Force 1 retry in schema-enforced mode — observe the latency spike from the second API call
+
+**What to observe:**
+- Does schema-enforced mode show higher latency than JSON mode due to constrained decoding?
+- How much does a single retry add to total latency (one extra round-trip to the API)?
+- Do the output token counts differ across approaches for the same code input?
+
+**Expected insight:** Schema-enforced mode adds a small constant overhead from constrained decoding, but this is typically 50–150ms — negligible compared to the cost of a retry. One retry doubles the total latency. This is why a well-designed schema and prompt that avoids validation failures is worth the upfront investment.
 
 ---
 
 ## Key Takeaways
 
-- Free-form LLM output is not suitable for production pipelines — structured output is non-negotiable
-- There are three levels of structure enforcement — prompt, JSON mode, schema. Always prefer schema.
-- JSON Schema is the universal language — Zod compiles to it, APIs consume it, learn to read it
-- Streaming and structured output are fundamentally incompatible — buffer first, parse after
-- Always validate with Zod even when using schema-enforced mode — defense in depth
-- Structured output is not a Phase 1 detail — it is the foundation of every phase that follows
+- Prompt-only, JSON mode, and schema-enforced are not interchangeable — only schema-enforced guarantees both valid JSON syntax *and* the correct shape. The difference is stark when run side by side (Experiment 1)
+- JSON mode is a syntax guarantee, not a schema guarantee — `{ "foo": "bar" }` is valid JSON mode output even when `{ "name": "...", "issues": [...] }` was expected. Always validate with Zod regardless of which approach is used (Common Mistake 1)
+- `.safeParse()` is the only acceptable pattern in production — `.parse()` throws and can crash the process. Always check `result.success` before accessing `result.data` (Experiment 2)
+- The retry-with-correction pattern works, but retries are expensive — each one adds a full round-trip. Fix the schema and prompt first; treat retries as a last-resort safety net, not a primary strategy (Experiment 3)
+- Providers implement JSON Schema selectively — recursive schemas, certain `anyOf` patterns, and deep `$ref` nesting are commonly unsupported. Design schemas flat and test provider limits before shipping (Experiment 4)
+- Streaming and structured output are fundamentally incompatible — partial JSON is unparseable. Buffer the full stream first, then parse once at the end. Streaming structured output is an optimization, not a starting point (Experiment 5)
+- Schema-enforced mode adds a small constant latency overhead from constrained decoding — this is negligible compared to the latency of a single retry. A well-designed schema that avoids retries is always faster in aggregate (Experiment 6)
+- Structured output is the silent foundation of every agentic system — tool calls, ReAct loops, and multi-agent delegation all depend on it. Mastering it here makes every phase from 2 onwards significantly easier to debug
 
 ---
 
 ## Phase 1 Complete 🎉
 
-You've now covered all four Core LLM Primitives:
+What covered: all four Core LLM Primitives (Foundation for Phase 2)
 
 | Phase | Concept | What You Built |
 |---|---|---|
@@ -350,7 +446,7 @@ You've now covered all four Core LLM Primitives:
 | 1.3 | Streaming | SSE, chunk accumulation, TTFT, error handling |
 | 1.4 | Structured Output | JSON Schema, Zod validation, retry patterns |
 
-Everything from Phase 2 onwards — tool calling, RAG, agents, memory systems — builds directly on these four primitives. You now have the foundation.
+Everything from Phase 2 onwards — tool calling, RAG, agents, memory systems — builds directly on these four primitives.
 
 ---
 
