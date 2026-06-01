@@ -9,7 +9,7 @@ This is a no “vibe coding” zone — every component is built with intention,
 ## 🗺️ AI Playground Roadmap
 
 ### **Philosophy**
-Each mini-app should be *minimal but complete* — no boilerplate, no abstraction layers. Just the concept, wired end-to-end, so you deeply understand what's happening.
+Each mini-app should be *minimal but complete* — no boilerplate, no abstraction layers. Just the concept, wired end-to-end, to deeply understand what's happening.
 
 ---
 
@@ -24,7 +24,7 @@ Each mini-app should be *minimal but complete* — no boilerplate, no abstractio
 
 **1.2 — Conversation & Memory**
 - Multi-turn chat with message history
-- How statelessness works (you send full history every time)
+- How statelessness works (send full history every time)
 - Manual conversation trimming when context fills up
 
 **1.3 — Streaming**
@@ -157,7 +157,7 @@ Each mini-app should be *minimal but complete* — no boilerplate, no abstractio
 
 **6.4 — Prompt Injection & Defense**
 - How prompt injection attacks work
-- Building defenses into your system prompt
+- Building defenses into the system prompt
 - Why this matters for production agentic systems
 
 ---
@@ -182,11 +182,11 @@ Each mini-app should be *minimal but complete* — no boilerplate, no abstractio
 ---
 
 ## Phase 8 — Evals & Observability
-*How you know your AI system is actually working*
+*How to know if an AI system is actually working*
 
 **8.1 — LLM Evals from Scratch**
 - What makes a good eval?
-- Building test cases for your AI outputs
+- Building test cases for AI outputs
 - LLM-as-judge pattern
 
 **8.2 — Tracing & Logging**
@@ -238,4 +238,4 @@ Each mini-app should be *minimal but complete* — no boilerplate, no abstractio
 
 ## One Rule to Follow
 
-> For every mini-app — write a short `README` explaining **what the concept is**, **how you implemented it**, and **what you learned**. This doubles as portfolio content and forces deep understanding.
+> For every mini-app — write a short `README` explaining **what the concept is**, **how it's implemented**, and **what was learned**. This doubles as portfolio content and forces deep understanding.
