@@ -10,9 +10,6 @@ coverage
 build
 dist
 
-# turbo
-.turbo
-
 # next.js (if added later)
 .next/
 out/
