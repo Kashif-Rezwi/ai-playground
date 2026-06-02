@@ -4,14 +4,16 @@
     "private": true,
     "packageManager": "pnpm@10.30.3",
     "scripts": {
-        "dev": "turbo run dev",
-        "build": "turbo run build",
-        "lint": "turbo run lint",
+        "dev": "node scripts/dev.mjs",
+        "dev:text-gen": "pnpm --filter @ai-playground/text-generation dev",
+        "dev:chat-api": "pnpm --filter @ai-playground/chat-api dev",
+        "dev:convo": "pnpm --filter @ai-playground/conversation-and-memory dev",
+        "dev:streaming": "pnpm --filter @ai-playground/streaming dev",
+        "dev:structured": "pnpm --filter @ai-playground/structured-output dev",
         "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\""
     },
     "devDependencies": {
         "typescript": "^5.0.0",
-        "turbo": "^2.0.0",
         "eslint": "^8.0.0",
         "prettier": "^3.0.0",
         "dotenv": "^16.0.0",

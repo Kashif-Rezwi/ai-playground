@@ -4,10 +4,19 @@
   "description": "",
   "main": "src/index.ts",
   "scripts": {
-    "dev": "npx tsx src/index.ts",
     "review": "npx tsx src/index.ts sample/sample.txt",
     "experiment": "npx tsx src/experiment.ts"
   },
+  "selector": [
+    {
+      "label": "structured-output · review",
+      "script": "review"
+    },
+    {
+      "label": "structured-output · experiment",
+      "script": "experiment"
+    }
+  ],
   "keywords": [],
   "author": "",
   "license": "ISC",

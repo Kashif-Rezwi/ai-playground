@@ -21,9 +21,9 @@ By the end of this, there will be a clear understanding of what a prompt *is*, w
 
 ### What Is Text Generation?
 
-At its core, an LLM is a **next-token predictor**. Given a sequence of tokens (chunks of text), it predicts the most probable next token — and repeats this process until it decides to stop. Text generation is just this loop, run hundreds or thousands of times to produce a coherent response.
+At its core, an LLM is a **next-token predictor**. Given a sequence of tokens (chunks of text), it predicts the most probable next token and repeats this process until it decides to stop. Text generation is just this loop, run hundreds or thousands of times to produce a coherent response.
 
-When an LLM API is called, it is not a “question” being sent. Instead, it is a **structured prompt**—a carefully formatted sequence of messages—which the model then continues.
+When an LLM API is called, it is not a “question” being sent. Instead, it is a **structured prompt**, a carefully formatted sequence of messages which the model then continues.
 
 ---
 
@@ -37,7 +37,7 @@ Every API call is built from **roles**. Each message in the conversation belongs
 | `user` | The human's input — a question, instruction, or message. |
 | `assistant` | The model's previous responses (used in multi-turn conversations). |
 
-In a single-turn call, it typically send:
+In a single-turn call, it typically sends:
 1. A `system` message defining how the model should behave
 2. A `user` message with the actual input
 
@@ -75,10 +75,10 @@ Controls **which tokens are even considered** during selection.
 Sets a hard cap on **how long the response can be**.
 
 - The model will stop generating once it hits this limit, even mid-sentence.
-- Does not guarantee the model *will* generate that many tokens — it may stop earlier if it naturally finishes.
+- Does not guarantee the model *will* generate that many tokens, it may stop earlier if it naturally finishes.
 - Setting this too low truncates responses. Setting it too high wastes cost on padding.
 
-> **Rule of thumb:** Estimate the typical response length for the use case and set `max_tokens` to roughly 1.5× that amount. Ensure the application gracefully handles truncated responses.
+> **Rule of thumb:** Estimate the typical response length for the use case and set `max_tokens` to roughly 1.5x that amount. Ensure the application gracefully handles truncated responses.
 
 #### `stop` sequences
 A list of strings that will cause the model to **immediately stop generating** when encountered.
@@ -90,12 +90,12 @@ A list of strings that will cause the model to **immediately stop generating** w
 
 ### What Is a Context Window?
 
-Every model has a **context window** — a maximum number of tokens it can process in a single call. This includes:
+Every model has a **context window**, a maximum number of tokens it can process in a single call. This includes:
 - System prompt
 - All user and assistant messages in the conversation history
 - The response it generates
 
-If the total exceeds the context window, the API will throw an error (or silently truncate, depending on provider).
+If the total exceeds the context window, the API will throw an error (or silently truncate, depending on the provider).
 
 **Why does this matter for text generation?**
 Even for a simple single-turn app, understanding context limits helps:
@@ -156,7 +156,7 @@ Once the app is working, run each of these deliberately. Each one is designed to
 - At `1.0`, how much natural variation appears?
 - At `1.5`, does coherence degrade or does it stay readable?
 
-**Expected insight:** Temperature doesn't flip a switch — it reshapes the probability distribution across every token. Even at `0`, some models show minor variance due to floating-point non-determinism.
+**Expected insight:** Temperature doesn't flip a switch, it reshapes the probability distribution across every token. Even at `0`, some models show minor variance due to floating-point non-determinism.
 
 ---
 
@@ -185,7 +185,7 @@ Once the app is working, run each of these deliberately. Each one is designed to
 **Setup:** Use the same user message: `"Explain recursion."`
 
 **Steps:**
-1. Run with no system prompt at all — log the output
+1. Run with no system prompt at all and log the output
 2. Run with a vague system prompt: `"You are a helpful assistant."`
 3. Run with a specific system prompt: `"You are a computer science tutor explaining concepts to a 16-year-old with no prior programming experience. Use one analogy and keep the explanation under 100 words."`
 
@@ -232,7 +232,7 @@ Once the app is working, run each of these deliberately. Each one is designed to
 - What is the `stop_reason` value when the model finishes naturally vs when `max_tokens` is hit?
 - Does the model's `id` in the response match what was requested?
 
-**Expected insight:** The response object is a contract. `stop_reason`, token counts, and model ID are production-critical fields — not just debug noise.
+**Expected insight:** The response object is a contract. `stop_reason`, token counts, and model ID are production-critical fields, not just debug noise.
 
 ---
 
@@ -243,8 +243,8 @@ Once the app is working, run each of these deliberately. Each one is designed to
 
 **Steps:**
 1. Write a system prompt (exactly 50 words): `"You are a helpful assistant. You answer questions clearly and concisely. You do not use jargon. You always explain technical terms when you use them. You format your responses in plain text. You do not use bullet points unless asked. You keep answers under 100 words."` — send any short user message and record `input_tokens` / `prompt_tokens` 
-2. Double the system prompt length by appending: `"You ask a clarifying question if the user's request is ambiguous. You cite your reasoning when giving advice. You never make assumptions about the user's background. You prefer simple words over complex ones. You always end with a one-sentence summary of your answer."` — record `input_tokens` again. Does it exactly double?
-3. Send a plain English prompt: `"Explain what a function is in programming."` — record `input_tokens` / `prompt_tokens` 
+2. Double the system prompt length by appending: `"You ask a clarifying question if the user's request is ambiguous. You cite your reasoning when giving advice. You never make assumptions about the user's background. You prefer simple words over complex ones. You always end with a one-sentence summary of your answer."`, then record `input_tokens` again. Does it exactly double?
+3. Send a plain English prompt: `"Explain what a function is in programming."`, then record `input_tokens` / `prompt_tokens` 
 4. Send a prompt of similar word count but containing a code block:
    ```
    "Here is a Python function:
@@ -252,7 +252,7 @@ Once the app is working, run each of these deliberately. Each one is designed to
        return a + b
    What does this do?"
    ```
-   Compare `input_tokens` / `prompt_tokens`  — does code tokenize the same as prose?
+   Compare `input_tokens` / `prompt_tokens` and observe if code tokenizes the same as prose.
 
 **What to observe:**
 - What's the tokens-per-word ratio for plain English vs code vs JSON?
@@ -265,13 +265,13 @@ Once the app is working, run each of these deliberately. Each one is designed to
 
 ## Key Takeaways
 
-- The model doesn't "understand" the question — it continues a token sequence based on everything sent to it (Experiment 1)
+- The model doesn't "understand" the question, it continues a token sequence based on everything sent to it (Experiment 1)
 - Even with `temperature: 0`, outputs may still vary slightly due to small floating-point computation differences that can influence token selection when probabilities are very close. (Experiment 1)
-* `temperature` and `top_p` work together, not as substitutes — one controls how random the choices feel, while the other limits the selection to the most likely options (Experiment 2)
-- The system prompt is not magic — it's just tokens with a privileged position, and precision in it directly shapes output (Experiment 3)
-- `max_tokens` is a ceiling, not a target — always check `stop_reason` to know if the model finished or was cut off (Experiment 4)
-- The raw API response is a contract — `stop_reason`, token counts, and model ID are production-critical fields, not debug noise (Experiment 5)
-- Code and structured data tokenize differently than prose — token count ≠ word count, and building this intuition helps avoid hidden truncation, lost context, and incomplete responses later (Experiment 6)
+- `temperature` and `top_p` work together, not as substitutes, one controls how random the choices feel, while the other limits the selection to the most likely options (Experiment 2)
+- The system prompt is not magic, it's just tokens with a privileged position, and precision in it directly shapes output (Experiment 3)
+- `max_tokens` is a ceiling, not a target, always check `stop_reason` to know if the model finished or was cut off (Experiment 4)
+- The raw API response is a contract, `stop_reason`, token counts, and model ID are production-critical fields, not debug noise (Experiment 5)
+- Code and structured data tokenize differently than prose, token count ≠ word count, and building this intuition helps avoid hidden truncation, lost context, and incomplete responses later (Experiment 6)
 
 ---
 
