@@ -20,6 +20,8 @@ export async function runTurn(history: Message[]): Promise<Message> {
     const message1 = response1.choices[0].message;
     const finishReason = response1.choices[0].finish_reason;
 
+    console.log(`\n[LOOP] finish_reason: "${finishReason}"`);
+
     // --- STEP 2: Check Model Decision ---
     if (finishReason === "tool_calls" && message1.tool_calls) {
 
@@ -31,6 +33,7 @@ export async function runTurn(history: Message[]): Promise<Message> {
 
         // --- STEP 3: Execute the Tool ---
         const toolResultJson = executeTool(toolName, toolArgs);
+        console.log(`[TOOL] Result: ${toolResultJson}`);
 
         history.push({
             role: "tool",
