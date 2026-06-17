@@ -1,5 +1,6 @@
 import dotenv from 'dotenv';
-dotenv.config();
+import path from 'path';
+dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
 
 // Ensure the API key is present
 if (!process.env.OPENAI_API_KEY) {

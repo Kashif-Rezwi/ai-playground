@@ -3,7 +3,7 @@ import { getWeather, WeatherArgs } from './weather';
 // The dispatcher function
 export function executeTool(name: string, argsJson: string): string {
     try {
-        console.log(`\nExecuting tool: [${name}] with args: ${argsJson}`);
+        console.log(`\n⚙️  Executing tool: [${name}] with args: ${argsJson}`);
 
         // The model gives us a raw JSON string. We parse it here in the app layer.
         const parsedArgs = JSON.parse(argsJson);
