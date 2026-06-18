@@ -327,7 +327,7 @@ Once the app is working, run each of these deliberately. Each one surfaces a spe
 - Does question 5 trigger a tool call even though the phrasing is indirect?
 - Compare the number of messages added to history after a tool-call turn vs a direct-answer turn
 
-**Expected insight:** `tool_choice: "auto"` gives the model real judgment. It doesn't call the tool for geography questions it knows the answer to — only for current weather data it cannot know. The phrase "right now" reliably triggers tool use because it signals recency. Indirect phrasings like "what should I pack" are context-dependent, the model infers the user wants weather data to decide.
+**Expected insight:** `tool_choice: "auto"` gives the model real judgment. It doesn't call the tool for geography questions it knows the answer to, only for current weather data it cannot know. The phrase "right now" reliably triggers tool use because it signals recency. Indirect phrasings like "what should I pack" are context-dependent, the model infers the user wants weather data to decide.
 
 ---
 
@@ -340,7 +340,7 @@ Once the app is working, run each of these deliberately. Each one surfaces a spe
 1. Send: `"Weather in London please, in fahrenheit"`
 2. Inspect the logged assistant message structure
 3. Find: `content`, `tool_calls[0].id`, `tool_calls[0].function.name`, `tool_calls[0].function.arguments`
-4. Check the type of `tool_calls[0].function.arguments` with a `typeof` check — is it a string or an object?
+4. Check the type of `tool_calls[0].function.arguments` with a `typeof` check is it a string or an object?
 5. Now run the same prompt without the `typeof` check and instead try `toolCall.function.arguments.city` directly, what happens?
 
 **What to observe:**
@@ -390,7 +390,7 @@ Once the app is working, run each of these deliberately. Each one surfaces a spe
 - With `"none"`, does the model acknowledge it can't check current weather, or does it guess?
 - Compare `finish_reason` across all three modes for the same weather prompt
 
-**Expected insight:** `"required"` forces a tool call even when the model wouldn't choose one — which often means the model invents a plausible city or passes empty arguments. It's useful for testing tool definitions in isolation but harmful in production. `"none"` lets the model reveal what it would say without tool access — useful for testing fallback behavior. `"auto"` is the correct default for real agent behavior.
+**Expected insight:** `"required"` forces a tool call even when the model wouldn't choose one, which often means the model invents a plausible city or passes empty arguments. It's useful for testing tool definitions in isolation but harmful in production. `"none"` lets the model reveal what it would say without tool access, useful for testing fallback behavior. `"auto"` is the correct default for real agent behavior.
 
 ---
 
@@ -418,7 +418,7 @@ Once the app is working, run each of these deliberately. Each one surfaces a spe
 - When throwing instead of returning, does the runner crash? Is the conversation history left in a valid state?
 - Compare the history after an error-return turn vs a throw turn, which state is recoverable?
 
-**Expected insight:** Tools should never throw. A thrown error crashes the runner mid-turn, leaving an assistant message with `tool_calls` appended to history but no corresponding `tool` result message — this breaks the alternating structure and causes the next API call to fail with a history validation error. Returning structured error JSON instead lets the model communicate the failure naturally and keeps history intact. Error handling belongs inside the tool function, not above it.
+**Expected insight:** Tools should never throw. A thrown error crashes the runner mid-turn, leaving an assistant message with `tool_calls` appended to history but no corresponding `tool` result message, this breaks the alternating structure and causes the next API call to fail with a history validation error. Returning structured error JSON instead lets the model communicate the failure naturally and keeps history intact. Error handling belongs inside the tool function, not above it.
 
 ---
 
@@ -431,10 +431,10 @@ Once the app is working, run each of these deliberately. Each one surfaces a spe
 The history sequence must be: assistant-with-tool-calls → tool-result. Skipping the assistant message and appending only the tool result causes an API error on the second call ("tool result references an unknown tool_call_id"). The assistant decision and the tool result are paired by `tool_call_id`, both must be in history.
 
 **Mistake 3 — Forgetting `tool_call_id` on the tool result message**
-The `tool` message must include `tool_call_id` matching the `id` from the corresponding `tool_calls` entry. Missing or mismatched IDs cause a validation error on the second API call. In Phase 2.2 with parallel tool calls, this requires careful iteration — each tool result must reference its own call ID.
+The `tool` message must include `tool_call_id` matching the `id` from the corresponding `tool_calls` entry. Missing or mismatched IDs cause a validation error on the second API call. In Phase 2.2 with parallel tool calls, this requires careful iteration, each tool result must reference its own call ID.
 
 **Mistake 4 — Checking `content` with a falsy check**
-`assistantMessage.content` is `null` when the model calls a tool — not an empty string. `if (!content)` evaluates to `true` for both `null` and `""`. Check `finish_reason === "tool_calls"` instead of inspecting `content` to detect the tool call branch.
+`assistantMessage.content` is `null` when the model calls a tool, not an empty string. `if (!content)` evaluates to `true` for both `null` and `""`. Check `finish_reason === "tool_calls"` instead of inspecting `content` to detect the tool call branch.
 
 **Mistake 5 — Throwing errors inside tool functions**
 A thrown error breaks the runner and leaves history in an invalid state. The assistant message with `tool_calls` is appended before the throw, but the corresponding `tool` result never gets appended. The next API call fails because history ends on an assistant message with unresolved tool_calls. Always catch errors inside tool functions and return structured error JSON.
@@ -446,7 +446,11 @@ Every tool call requires a minimum of two API calls, one to get the tool call de
 Without it, the model can invent extra fields in its arguments. These pass `JSON.parse()` silently but may break tool functions expecting only the defined parameters. Always include `additionalProperties: false` in every tool's `parameters` schema.
 
 **Mistake 8 — Writing a vague tool description**
-The model's decision to call (or not call) a tool comes entirely from reading the `description`. "Gets weather data" will produce inconsistent behavior. "Get the current weather conditions for a specific city. Use this whenever the user asks about weather, temperature, or current conditions, never guess at weather data." is precise and produces reliable behavior. The description is not metadata, it is the model's decision boundary.
+The model's decision to call (or not call) a tool comes entirely from reading the `description`. "Gets weather data" will produce inconsistent behavior. 
+
+For example: "Get the current weather conditions for a specific city. Use this whenever the user asks about weather, temperature, or current conditions, never guess at weather data." 
+
+This is precise and produces reliable behavior. The description is not metadata, it is the model's decision boundary.
 
 ---
 

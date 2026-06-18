@@ -14,12 +14,13 @@ export async function runTurn(history: Message[]): Promise<Message> {
         model: MODEL,
         messages: history,
         tools: TOOLS,
-        tool_choice: "auto",
+        tool_choice: "auto", // "auto" | "required" | "none";
     });
 
     const message1 = response1.choices[0].message;
     const finishReason = response1.choices[0].finish_reason;
 
+    // console.log(`$[LOG] ${JSON.stringify(message1, null, 2)}`)
     console.log(`\n[LOOP] finish_reason: "${finishReason}"`);
 
     // --- STEP 2: Check Model Decision ---
@@ -30,6 +31,9 @@ export async function runTurn(history: Message[]): Promise<Message> {
         const toolCall = message1.tool_calls[0] as ToolCall;
         const toolName = toolCall.function.name;
         const toolArgs = toolCall.function.arguments;
+
+        // console.log(`[LOG] ${typeof toolArgs}`) // need to parse args
+        // console.log(`[LOG] ${JSON.parse(toolArgs)?.city}`)
 
         // --- STEP 3: Execute the Tool ---
         const toolResultJson = executeTool(toolName, toolArgs);

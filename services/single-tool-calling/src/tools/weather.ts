@@ -22,6 +22,12 @@ export function getWeather(args: WeatherArgs): string {
         const { city, unit = 'celsius' } = args;
         const normalizedCity = city.toLowerCase();
 
+        // If the city is Atlantis, return an error
+        // if (normalizedCity === "atlantis") {
+        //     throw new Error("City not found");
+        //     // return JSON.stringify({ error: "City not found in weather database", city: args.city });
+        // }
+
         // Look up the city in our mock database
         const weatherData = MOCK_DB[normalizedCity];
 
