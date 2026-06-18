@@ -1,3 +1,15 @@
+import dotenv from 'dotenv';
+import path from 'path';
+
+// Load the .env from the root of the project
+dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
+
+// Ensure the API key is present
+if (!process.env.OPENAI_API_KEY) {
+    console.error("❌ ERROR: OPENAI_API_KEY is missing in your environment.");
+    process.exit(1);
+}
+
 // The model to use. GPT-4o-mini is fast and great at tool calling.
 export const MODEL = "gpt-4o-mini";
 
