@@ -14,6 +14,12 @@ const MOCK_RATES: Record<string, number> = {
 };
 
 export function convertCurrency(args: CurrencyArgs): string {
+    // throw/return an error if the currency is BLORP (for testing error handling)
+    // if (args.to_currency === "BLORP") {
+    //     throw new Error("Unknown currency: BLORP");
+    //     // return JSON.stringify({ error: "Unknown currency: BLORP", from: args.from_currency, to: args.to_currency });
+    // }
+
     try {
         const { amount, from_currency, to_currency } = args;
         const from = from_currency.toUpperCase();

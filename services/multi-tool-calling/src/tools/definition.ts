@@ -5,6 +5,7 @@ export const TOOLS: ToolDefinition[] = [
         type: "function",
         function: {
             name: "get_weather",
+            // description: "Gets information about a city.", // for testing tool identification
             description: "Get the current weather conditions or temperature for a specific city. Use this ONLY when the user asks about weather, temperature, or current conditions. Do NOT use this to get the local time.",
             parameters: {
                 type: "object",
@@ -28,6 +29,7 @@ export const TOOLS: ToolDefinition[] = [
         type: "function",
         function: {
             name: "get_time",
+            // description: "Gets information about a city.", // for testing tool identification
             description: "Get the current local time for a specific city. Use this ONLY when the user asks about the clock time, timezone, or what time it is. Do NOT use this to get weather.",
             parameters: {
                 type: "object",
