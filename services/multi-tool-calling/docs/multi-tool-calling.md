@@ -219,17 +219,205 @@ This is intentional. Phase 2.2 is an extension of Phase 2.1, not a rewrite. The 
 
 ## What This Covers
 
+By completing this mini-app:
+
+- [x] Registering and managing multiple tools in a single session
+- [x] Understanding how tool descriptions function as a routing table
+- [x] Writing mutually exclusive descriptions that prevent tool confusion
+- [x] Observing parallel tool calls in the raw `tool_calls` array
+- [x] Understanding why parallel calls require at least two API calls regardless of the tool count
+- [x] Implementing the correct parallel history append sequence (assistant → all tools → second call)
+- [x] Understanding why `tool_call_id` ordering matters in parallel execution
+- [x] Distinguishing parallel from sequential tool call patterns and knowing when each occurs
+- [x] Handling partial failure in parallel calls without corrupting history
+- [x] Understanding how tool definition token cost affects context budget
+- [x] Observing model tool selection reasoning across ambiguous and unambiguous prompts
+
 ---
 
 ## Experiments to Run
+
+Once the app is working, run each of these deliberately. Each one surfaces a specific concept from this phase.
+
+---
+
+### Experiment 1 — Single Tool Selection From a Registry
+**Covers:** Tool routing, description-based selection, `finish_reason` branching
+
+**Setup:** Start the app. All three tools are registered. Watch the `[LOOP] finish_reason:` and `[TOOL] Executing:` logs.
+
+**Steps:**
+1. Send: `"What's the current time in Seoul?"` — note which tool runs
+2. Send: `"Is it raining in Lisbon right now?"` — note which tool runs
+3. Send: `"I need to convert 250 GBP to JPY"` — note which tool runs
+4. Send: `"What's the best season to visit Kyoto?"` — does any tool run?
+5. For each tool-call turn, type `history` and count the messages added
+
+**What to observe:**
+- Does the model call the correct single tool for each of steps 1–3?
+- Does step 4 trigger a tool call, or does the model answer from training knowledge?
+- How many messages are added to history per tool-call turn vs per direct-answer turn?
+- Do any of the tool calls produce unexpected tool selections e.g. `get_weather` being called for a time question?
+
+**Expected insight:** With well-written descriptions, the model consistently routes to the correct tool. The description boundary between `get_weather` and `get_time` matters most, both relate to a city, but one is about conditions and the other is about clock time. If routing errors appear, the tool descriptions are the first place to look, not the implementation.
+
+---
+
+### Experiment 2 — Triggering a Parallel Tool Call
+**Covers:** Parallel `tool_calls` array, two tools in one response, history after parallel execution
+
+**Setup:** Normal config. The key observable is the `tool_calls` array length in the first response.
+
+**Steps:**
+1. Send: `"I'm flying to Tokyo tonight — what's the weather like and what time will it be when I land?"` — watch the logs
+2. After the response, type `history` and inspect the full array
+3. Count: how many messages were added this turn?
+4. Find the assistant message with `tool_calls`. How many entries does the array have?
+5. Find the two `tool` messages. What are their `tool_call_id` values? Do they match the entries in the assistant message?
+6. Now send a single-tool question to compare history structure: `"What time is it in Tokyo?"`
+
+**What to observe:**
+- Does the single prompt "weather and time" produce one assistant message with two `tool_calls` entries, or two separate assistant messages each with one?
+- After the parallel call, how many total messages are in history for this turn? (Answer: 5 — user + assistant-with-two-tool-calls + tool-result-1 + tool-result-2 + final-assistant)
+- Compare that to the single-tool turn. How many messages does that add? (Answer: 4)
+- Are the two `tool` messages appended in the same order as the `tool_calls` array? Does order matter?
+
+**Expected insight:** A parallel tool call produces one assistant message with multiple `tool_calls` entries, not multiple assistant messages. The loop executes them sequentially and appends a `tool` message for each, in order. The final count for a parallel turn is 5 messages added vs 4 for a single-tool turn. The extra message is the second tool result. Understanding this growth rate matters when building agents that make many calls in long sessions.
+
+---
+
+### Experiment 3 — The Boundary Between Parallel and Sequential
+**Covers:** Independence detection, when the model parallelizes vs chains, agentic reasoning
+
+**Setup:** Normal config. The goal is to find the conditions under which the model does and does not parallelize.
+
+**Steps:**
+1. Send: `"What's the weather in Berlin and what time is it there?"` — parallel or sequential?
+2. Send: `"Convert 100 USD to EUR, and also tell me the weather in Paris"` — parallel or sequential?
+3. Send: `"What's the weather like in the warmest European capital right now?"` — how many turns and calls does this take?
+4. Send: `"I have 500 USD. How many Euros can I get, and is the weather in Paris good for sightseeing with that budget?"` — observe carefully
+5. For steps 3 and 4, type `history` after each response and count the distinct assistant messages (each represents a model "turn")
+
+**What to observe:**
+- Do steps 1 and 2 produce parallel calls (one assistant message with multiple `tool_calls`) or sequential calls (multiple assistant messages each with one)?
+- For step 3, does the model attempt to call a "get warmest city" tool (which doesn't exist), answer from knowledge, or refuse?
+- Does step 4 produce a single parallel call, two sequential calls, or something else?
+- In any case where multiple turns happen, how many total API calls were made?
+
+**Expected insight:** The model parallelizes when targets are known and independent. "Weather in Berlin and time in Berlin" → parallel, both targets are explicit. "Warmest European capital" → sequential or direct answer because the target city isn't known upfront, as the model has to reason to a city before it can call a weather tool (or it just answers from training). This is the difference between retrieval (known target) and reasoning (unknown target that must be computed). Phase 4.1's ReAct pattern is built on exactly this distinction.
+
+---
+
+### Experiment 4 — Inspecting Raw Parallel Tool Calls
+**Covers:** `tool_calls` array structure, `id` uniqueness, argument parsing per call
+
+**Setup:** Add a temporary `console.log(JSON.stringify(assistantMsg.tool_calls, null, 2))` in `runner.ts` after receiving the first API response, before the execution loop. Remove it after.
+
+**Steps:**
+1. Send: `"What's the weather in London and what time is it there?"`
+2. Inspect the raw `tool_calls` array logged to the terminal
+3. Find: the `id` for each call — are they unique strings? What format are they?
+4. Find: the `arguments` for each call — are they JSON strings or objects?
+5. Now temporarily modify the runner to only iterate the first tool call (`for (const toolCall of [assistantMsg.tool_calls[0]])`) — restart and send the same prompt
+6. What happens on the second API call when only one of the two tool results is present?
+
+**What to observe:**
+- How many entries are in `tool_calls` for the parallel prompt?
+- Are the `id` values distinct across the two calls? What do they look like (format, prefix)?
+- When only one tool result is appended and the second API call is made, does it succeed, fail, or produce a partial response?
+- Does the API throw an error for the unresolved `tool_call_id`, or does the model just answer with partial information?
+
+**Expected insight:** The `id` values are generated by the model (e.g. `"call_abc123"`) and are unique per turn. They serve as the join key between `tool_calls` entries and `tool` result messages. Leaving a `tool_call_id` unresolved in history causes an API error on the next call, as the history structure is invalid. This is why the iteration loop must be unconditional: every entry in `tool_calls` must produce exactly one `tool` result message before the second call.
+
+---
+
+### Experiment 5 — Partial Tool Failure in Parallel Execution
+**Covers:** Error handling in the loop, history integrity under failure, model response with partial results
+
+**Setup:** Temporarily modify `tools/currency.ts` to throw or return an error for a specific currency pair.
+
+**Steps:**
+1. In `currency.ts`, add this at the top of `convertCurrency()`:
+   ```typescript
+   if (args.to_currency === "BLORP") {
+       return { error: "Unknown currency: BLORP", from: args.from_currency, to: args.to_currency };
+   }
+   ```
+2. Send: `"What's the weather in Tokyo and convert 100 USD to BLORP"`
+3. Watch both `[TOOL]` log lines — what does each return?
+4. Read the final response — how does the model handle one success and one failure?
+5. Type `history` — are there two `tool` messages? Is the `tool_call_id` for the failed call present?
+6. Now instead of returning an error, throw from `convertCurrency()` and observe what happens to the runner
+
+**What to observe:**
+- When one tool returns error JSON and the other succeeds, does the model compose a useful partial response or refuse entirely?
+- Are both `tool` messages present in history even when one contains error JSON?
+- Is the conversation still usable after the partial failure, can a follow-up message be sent successfully?
+- When `throw` is used instead of returning error JSON, does the runner crash and is history left in a recoverable state?
+
+**Expected insight:** Returning structured error JSON keeps history intact. The model receives both results, sees one is an error, and composes a response that addresses what it can ("The weather in Tokyo is 22°C. I couldn't convert to BLORP, as that currency isn't recognized."). Throwing inside a tool corrupts the history because the `tool_call_id` for the throwing tool has an unresolved reference in the assistant message. The try/catch wrapper in the runner's iteration loop exists precisely for this: it guarantees every call_id gets a result message, even under failure.
+
+---
+
+### Experiment 6 — Tool Description Quality and Routing Accuracy
+**Covers:** Description as routing table, ambiguity effects, description tuning
+
+**Setup:** This experiment deliberately degrades description quality to observe routing errors.
+
+**Steps:**
+1. In `definitions.ts`, replace `get_weather`'s description with: `"Gets information about a city."`
+2. Replace `get_time`'s description with: `"Gets information about a city."`
+3. Restart and run these prompts, noting which tool is called each time:
+   - `"What's the temperature in Madrid?"`
+   - `"What time is it in Madrid?"`
+   - `"Tell me about Madrid."`
+4. Restore the original descriptions and run the same three prompts. Compare results.
+5. With original descriptions, send: `"What's the situation in Madrid right now?"` ambiguous with no clear tool signal. What happens?
+
+**What to observe:**
+- With identical vague descriptions, does the model consistently call the right tool, or is it unpredictable?
+- After the identical descriptions, does `"temperature"` reliably route to `get_weather`? Does `"time"` reliably route to `get_time`?
+- With restored descriptions, does the routing improve immediately?
+- For the ambiguous prompt "What's the situation in Madrid right now?", does the model call one tool, both tools, or answer directly?
+
+**Expected insight:** Identical or vague descriptions cause inconsistent routing, as the model falls back to semantic guessing from the tool name alone. Precise, mutually exclusive descriptions with explicit trigger conditions ("Use this whenever the user asks about weather or temperature") are what actually determine routing reliability. This is directly analogous to writing precise routing rules in a backend: the clearer the rule, the more predictable the behavior. The ambiguous prompt also reveals that the model uses the most prominent signal in the user's message, "situation" is broad, so it may call one tool, both, or neither depending on how it interprets intent.
 
 ---
 
 ## Common Mistakes to Avoid
 
+**Mistake 1 — Making the second API call before all tool results are appended**
+Iterating over `tool_calls`, making the second API call after the first result, and appending remaining results after the call is the most common structural error in parallel tool calling. The second API call must come after the entire `for` loop completes, not inside it. All pending `tool_call_id` references must be resolved before the next model call.
+
+**Mistake 2 — Appending tool results without first appending the assistant tool_call message**
+The assistant message containing `tool_calls` must come first in history, before any of the corresponding `tool` result messages. Appending tool results before the assistant decision causes an API error because the `tool_call_id` references a message that doesn't yet exist in history.
+
+**Mistake 3 — Stopping the loop on the first tool failure**
+If one tool in a parallel batch throws or errors and the loop is broken early, any remaining `tool_call_id` entries in the assistant message are left unresolved. The history is invalid and the next API call fails. Every entry in `tool_calls` must produce a `tool` result message, success or failure. The try/catch must be inside the loop, not around it.
+
+**Mistake 4 — Overlapping tool descriptions**
+Two tools with descriptions that cover the same semantic territory produce inconsistent model behavior. "Gets city data" as a description for both `get_weather` and `get_time` means the model selects based on `name` alone, which is unreliable. Each description should describe a distinct, non-overlapping capability with an explicit trigger condition.
+
+**Mistake 5 — Assuming parallel calls are always faster end-to-end**
+Parallel tool calls still require two API calls (initial + second with all results). If the tool functions themselves are fast (mocks, simple lookups), the API call latency dominates. Running tools concurrently with `Promise.all()` helps in real API scenarios but doesn't change the two API call minimum. Count API calls, not tool calls, for latency estimates.
+
+**Mistake 6 — Conflating execution parallelism with logical parallelism**
+The model decides logical parallelism (can I fetch these together?). The application decides execution parallelism (do I run these concurrently?). Both are independent choices. The runner can execute tools sequentially (simpler, easier to reason about) while still correctly handling a parallel tool call from the model. Don't conflate the two: the model's `tool_calls` array length determines how many results to append, that's logic. Whether those tool functions run with `await` in sequence or `Promise.all()` in parallel is a performance optimization, not a correctness requirement.
+
+**Mistake 7 — Not accounting for tool definition token cost**
+Each tool schema consumes tokens on every API call, whether or not the tool is used. With large registries and detailed schemas, tool definitions can consume a significant portion of the context budget. Measure `usage.input_tokens` with and without tools registered. Lean descriptions that still produce correct routing behavior are worth the investment as tool registries grow.
+
 ---
 
 ## Key Takeaways
+
+- Multiple tools require descriptions that function as a routing table, each description must clearly delineate when to use that tool and not another. Overlapping descriptions produce inconsistent routing (Experiment 6)
+- Parallel tool calls produce one assistant message with multiple `tool_calls` entries. The iteration loop must complete fully before making the second API call, appending all results first is the only valid sequence (Experiments 2, 4)
+- Every `tool_call_id` in the assistant message must have a corresponding `tool` result message before the next API call. A broken loop on failure leaves unresolved IDs and corrupts history. The try/catch must be inside the loop, not around it (Experiment 5)
+- Parallel calls occur when targets are known and independent. Unknown targets (e.g. "warmest city") require sequential reasoning, the model must determine the target before it can call the retrieval tool. This distinction is the foundation of Phase 4's ReAct pattern (Experiment 3)
+- Returning structured error JSON from a failed tool keeps history intact and lets the model compose a partial response. Throwing corrupts the `tool_calls` / `tool` pairing and makes history unrecoverable without a full rollback (Experiment 5)
+- Tool definition schemas consume tokens on every API call regardless of whether the tool runs. In large registries, definition overhead becomes a real context budget line item (Concept section)
+- The runner's loop is the same as Phase 2.1, the difference is that it now actually iterates more than once. All Phase 2.2 complexity comes from correctly handling that iteration under multiple outcomes (all succeed, partial failure, all fail) (Experiments 2–5)
 
 ---
 
