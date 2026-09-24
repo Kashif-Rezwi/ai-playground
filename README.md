@@ -10,22 +10,21 @@ A minimal, stable, scalable monorepo setup designed to house future apps, servic
 
 ## Project Setup
 
-This workspace uses `pnpm` and `TurboRepo` for fast, scalable dependency management and task execution.
+This workspace uses `npm` and `TurboRepo` for fast, scalable dependency management and task execution.
 
 ### Prerequisites
 - [Node.js](https://nodejs.org/) (LTS recommended)
-- [pnpm](https://pnpm.io/)
 
 ### Installation
 
 1. Install dependencies:
    ```bash
-   pnpm install
+   npm install
    ```
 
 2. Start the development environment:
    ```bash
-   pnpm dev
+   npm run dev
    ```
 
 ## Included Tooling
@@ -33,3 +32,7 @@ This workspace uses `pnpm` and `TurboRepo` for fast, scalable dependency managem
 - **TypeScript** - Strict mode by default.
 - **TurboRepo** - For caching and running tasks efficiently.
 - **ESLint & Prettier** - Code quality and formatting.
+
+## Documentation
+
+- [AI Playground Roadmap](./docs/roadmap.md)
