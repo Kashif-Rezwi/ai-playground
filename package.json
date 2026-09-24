@@ -2,14 +2,18 @@
     "name": "ai-playground",
     "version": "1.0.0",
     "private": true,
-    "packageManager": "pnpm@10.30.3",
+    "workspaces": [
+        "apps/*",
+        "packages/*",
+        "services/*"
+    ],
     "scripts": {
         "dev": "node scripts/dev.mjs",
-        "dev:text-gen": "pnpm --filter @ai-playground/text-generation dev",
-        "dev:chat-api": "pnpm --filter @ai-playground/chat-api dev",
-        "dev:convo": "pnpm --filter @ai-playground/conversation-and-memory dev",
-        "dev:streaming": "pnpm --filter @ai-playground/streaming dev",
-        "dev:structured": "pnpm --filter @ai-playground/structured-output dev",
+        "dev:text-gen": "npm run dev --workspace @ai-playground/text-generation",
+        "dev:chat-api": "npm run dev --workspace @ai-playground/chat-api",
+        "dev:convo": "npm run dev --workspace @ai-playground/conversation-and-memory",
+        "dev:streaming": "npm run dev --workspace @ai-playground/streaming",
+        "dev:structured": "npm run dev --workspace @ai-playground/structured-output",
         "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\""
     },
     "devDependencies": {
