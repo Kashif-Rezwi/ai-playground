@@ -1,9 +1,9 @@
 import dotenv from "dotenv";
 import express from "express";
+dotenv.config({ path: "../../.env" });
 import { healthRouter } from "./routes/health.route";
 import { chatRouter } from "./routes/chat.route";
 
-dotenv.config({ path: "../../.env" });
 
 const app = express();
 const port = process.env.PORT || 3001;
@@ -12,8 +12,8 @@ const port = process.env.PORT || 3001;
 app.use(express.json());
 
 // routes
-app.use("/api", healthRouter);
-app.use("/api", chatRouter);
+app.use("/api/health", healthRouter);
+app.use("/api/chat", chatRouter);
 
 app.listen(port, () => {
     console.log(`[conversation-and-memory] Server is running on port ${port}`);

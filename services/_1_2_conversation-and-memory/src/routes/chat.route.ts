@@ -1,8 +1,7 @@
 import router from "express";
+import chatController from "../controllers/chat.controller";
 const chatRouter = router();
 
-chatRouter.post("/chat", async (req, res) => {
-    res.send({ status: "ok", message: "Chat endpoint is working!" })
-});
+chatRouter.post("/generate", chatController.generate);
 
 export { chatRouter };
