@@ -12,10 +12,9 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "packageManager": "pnpm@10.30.3",
   "dependencies": {
     "express": "^5.2.1",
-    "@ai-playground/llm-core": "workspace:*"
+    "@ai-playground/llm-core": "*"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",

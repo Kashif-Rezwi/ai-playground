@@ -3,7 +3,8 @@
  * scripts/dev.mjs
  *
  * Interactive service selector for ai-playground.
- * Auto-discovers all runnable packages from pnpm-workspace.yaml.
+ * Auto-discovers all runnable packages from the `workspaces` array
+ * in the root package.json.
  *
  * Two discovery modes per package:
  *
@@ -52,23 +53,13 @@ const write = (str) => process.stdout.write(str);
 // ─── Discovery ────────────────────────────────────────────────────────────────
 
 /**
- * Parse glob patterns from pnpm-workspace.yaml.
- * No yaml library needed — the format is always this simple:
- *   packages:
- *     - "apps/*"
- *     - "services/*"
+ * Parse glob patterns from the root package.json `workspaces` array.
+ * No extra config file needed — npm keeps them in package.json:
+ *   "workspaces": ["apps/*", "packages/*", "services/*"]
  */
 function parseWorkspaceGlobs() {
-    const yaml = fs.readFileSync(path.join(ROOT, "pnpm-workspace.yaml"), "utf8");
-    return yaml
-        .split("\n")
-        .filter(line => line.trim().startsWith("-"))
-        .map(line =>
-            line.trim()
-                .replace(/^-\s*["']?/, "")
-                .replace(/["']$/, "")
-                .trim()
-        );
+    const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, "package.json"), "utf8"));
+    return Array.isArray(pkg.workspaces) ? pkg.workspaces : [];
 }
 
 /**
@@ -162,9 +153,9 @@ function buildLines(services, selectedIndex) {
             ? `${ansi.bold}${ansi.brightWhite}${services[i].label}${ansi.reset}`
             : `${ansi.dim}${services[i].label}${ansi.reset}`;
 
-        // Show the exact pnpm command only on the selected row
+        // Show the exact npm command only on the selected row
         const hint = isSelected
-            ? `  ${ansi.dim}pnpm --filter ${services[i].packageName} ${services[i].script}${ansi.reset}`
+            ? `  ${ansi.dim}npm run ${services[i].script} --workspace ${services[i].packageName}${ansi.reset}`
             : "";
 
         lines.push(`  ${cursor} ${label}${hint}`);
@@ -206,12 +197,12 @@ function launch(service) {
     write("\n");
     console.log(
         `  ${ansi.bold}${ansi.green}▶ ${service.label}${ansi.reset}` +
-        `  ${ansi.dim}pnpm --filter ${service.packageName} ${service.script}${ansi.reset}\n`
+        `  ${ansi.dim}npm run ${service.script} --workspace ${service.packageName}${ansi.reset}\n`
     );
 
     const child = spawn(
-        "pnpm",
-        ["--filter", service.packageName, service.script],
+        "npm",
+        ["run", service.script, "--workspace", service.packageName],
         { stdio: "inherit", shell: true }
     );
 
