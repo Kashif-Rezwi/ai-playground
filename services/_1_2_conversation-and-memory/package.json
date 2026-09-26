@@ -2,9 +2,9 @@
   "name": "@ai-playground/conversation-and-memory",
   "version": "1.0.0",
   "description": "",
-  "main": "src/chat.ts",
+  "main": "src/server.ts",
   "scripts": {
-    "dev": "npx tsx src/chat.ts"
+    "dev": "npx tsx src/server.ts"
   },
   "keywords": [],
   "author": "",
