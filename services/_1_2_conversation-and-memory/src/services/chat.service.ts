@@ -7,16 +7,16 @@ const chatService = {
         const response  = await groqClient.chat.completions.create({
             model: 'openai/gpt-oss-20b',
             messages: [
-                { role: 'system', content: systemPrompt },
-                { role: 'user', content: userPrompt }
+                { role: "system", content: systemPrompt || "You are a helpful assistant." },
+                { role: "user", content: userPrompt }
             ],
-            max_tokens: maxTokens || 500,
-            temperature: temperature || 0.7,
-            top_p: topP || 1.0
+            max_tokens: maxTokens,
+            temperature: temperature,
+            top_p: topP
         });
 
         console.log("Raw response from LLM:", response);
-        return response.choices[0].message.content as string;;
+        return response.choices[0].message.content as string;
     }
 }
 
