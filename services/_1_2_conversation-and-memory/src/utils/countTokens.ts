@@ -1,8 +1,8 @@
 import { Message } from "./types";
-import { encoding_for_model } from "tiktoken";
+import { get_encoding } from "tiktoken";
 
 export function countTokens(messages: Message[]): number {
-    const enc = encoding_for_model("gpt-4o-mini");
+    const enc = get_encoding("o200k_base");
     let total = 0;
     for (const msg of messages) {
         total += 4; // overhead per message (role + formatting tokens)

@@ -1,10 +1,11 @@
-import { GenerateChatRequest, Message } from "../utils/types";
+import { countTokens } from "../utils/countTokens";
+import { GenerateChatRequest, GenerateChatResponse, Message } from "../utils/types";
 import groqClient from "./llm.service";
 
 let conversationHistory: Message[] = [];
 
 const chatService = {
-    async generateText({ systemPrompt, userPrompt, temperature, maxTokens, topP }: GenerateChatRequest): Promise<Message[]> {
+    async generateText({ systemPrompt, userPrompt, temperature, maxTokens, topP }: GenerateChatRequest): Promise<GenerateChatResponse> {
         // Initialize conversation history if empty
         if (conversationHistory.length === 0) {
             conversationHistory.push({ role: "system", content: systemPrompt });
@@ -29,7 +30,13 @@ const chatService = {
         const assistantMessage = rawResponse.choices[0].message.content as string;
         conversationHistory.push({ role: "assistant", content: assistantMessage });
 
-        return conversationHistory;
+        // Calculate the total token count for the conversation history
+        const totalTokenCount = countTokens(conversationHistory);
+
+        return { 
+            messages: conversationHistory,
+            tokenCount: totalTokenCount
+        };
     }
 }
 
