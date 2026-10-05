@@ -13,7 +13,13 @@ export function hardTruncation(messages: Message[]): Message[] {
     const systemPrompt = messages[0];
 
     // Get the most recent N-1 messages from the end of the array
-    const recentMessages = messages.slice(-(CONFIG.MAX_MESSAGES_TO_KEEP - 1));
+    let recentMessages = messages.slice(-(CONFIG.MAX_MESSAGES_TO_KEEP - 1));
+
+    // SAFETY CHECK: If the most recent message is an assistant message, 
+    // It should be removed to ensure the last message is always a user message.
+    if (recentMessages[0]?.role === "assistant") {
+        recentMessages = recentMessages.slice(1);
+    }
 
     // Combine them back together
     const newHistory = [systemPrompt, ...recentMessages];
