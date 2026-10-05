@@ -16,7 +16,7 @@ const chatService = {
         conversationHistory.push({ role: "user", content: userPrompt });
 
         // Prepare the context by applying necessary trimming or summarization
-        const messagesForRequest = prepareContext(conversationHistory);
+        const messagesForRequest = await prepareContext(conversationHistory);
         
         // Call the LLM API
         const rawResponse  = await groqClient.chat.completions.create({
