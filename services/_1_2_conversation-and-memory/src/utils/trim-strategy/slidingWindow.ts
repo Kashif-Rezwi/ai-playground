@@ -19,6 +19,13 @@ export function slidingWindow(messages: Message[]): Message[] {
     // Keep only the last (MAX_TURNS_TO_KEEP * 2) messages, which corresponds to the last MAX_TURNS_TO_KEEP turns.
     const messagesToKeep = messages.slice(messages.length - (CONFIG.MAX_TURNS_TO_KEEP * 2));
 
+    // SAFETY CHECK: If the window starts with an assistant message (which happens
+    // when the latest user message is still unanswered), drop it so the history
+    // always starts with a user message right after the system prompt.
+    if (messagesToKeep[0]?.role === "assistant") {
+        return [systemPrompt, ...messagesToKeep.slice(1)];
+    }
+
     // Return the system prompt followed by the messages to keep.
     return [systemPrompt, ...messagesToKeep];
 }

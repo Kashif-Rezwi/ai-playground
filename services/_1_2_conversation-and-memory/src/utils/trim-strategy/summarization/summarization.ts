@@ -14,11 +14,18 @@ export async function summarization(messages: Message[]): Promise<Message[]> {
     // Extract the system prompt
     const systemPrompt = messages[0];
 
-    // Extract the messages not inclding in summarization (the last 4 messages, which is 2 turns)
-    const recentMessages = messages.slice(-(CONFIG.TURNS_TO_KEEP_BEFORE_SUMMARIZATION * 2));
+    // Work only on the non-system messages (index 1 onwards), so the system
+    // prompt can never leak into the recent window or the summarized set.
+    const nonSystemMessages = messages.slice(1);
 
-    // Extract the messages to summarize (everything except the system prompt and the last 4 messages)
-    const messagesToSummarize = messages.slice(1, -(CONFIG.TURNS_TO_KEEP_BEFORE_SUMMARIZATION * 2));
+    // Keep the last (TURNS_TO_KEEP * 2 + 1) messages: 2 complete turns plus the new unanswered user message.
+    // The +1 preserves the alternating user -> assistant structure (slice(-(N*2)) 
+    // would start with an orphaned assistant message whenever the latest user message is unanswered).
+    const keepCount = Math.min(CONFIG.TURNS_TO_KEEP_BEFORE_SUMMARIZATION * 2 + 1, nonSystemMessages.length);
+    const recentMessages = nonSystemMessages.slice(-keepCount);
+
+    // Extract the messages to summarize (everything before the recent messages)
+    const messagesToSummarize = nonSystemMessages.slice(0, nonSystemMessages.length - keepCount);
 
     if (messagesToSummarize.length === 0) {
         // Edge case: If there are no messages to summarize
