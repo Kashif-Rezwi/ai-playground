@@ -30,7 +30,7 @@ function printHistory(messages: Message[]): void {
 
 async function startCli() {
     console.log("Chat started.");
-    console.log("Commands: /history, /exit");
+    console.log("Commands: /history, /clear, /exit");
     console.log("");
 
     let running = true;
@@ -55,6 +55,15 @@ async function startCli() {
 
         if (userPrompt === "/history") {
             printHistory(await chatService.getConversationHistory());
+            continue;
+        }
+
+        if (userPrompt === "/clear") {
+            await chatService.clearHistory();
+            console.clear();
+            console.log("Conversation history cleared. Starting fresh.");
+            console.log("Commands: /history, /clear, /exit");
+            console.log("");
             continue;
         }
 

@@ -48,6 +48,11 @@ const chatService = {
 
     async getConversationHistory(): Promise<Message[]> {
         return conversationHistory;
+    },
+
+    async clearHistory(): Promise<void> {
+        // Reset the in-memory conversation history.
+        conversationHistory = [];
     }
 }
 
