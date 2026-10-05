@@ -1,4 +1,4 @@
-export const SUMMARIZATION_PROMPT = `
+export const SummarizationPrompt = `
 You are an advanced memory-extraction engine. 
 Your job is to analyze the conversation history and compress it into a highly dense, structured memory block.
 

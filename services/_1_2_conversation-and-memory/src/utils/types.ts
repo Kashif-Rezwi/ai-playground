@@ -10,3 +10,10 @@ export interface GenerateChatRequest {
     maxTokens?: number;
     topP?: number;
 };
+
+export interface GenerateChatResponse {
+    messages: Message[];
+    tokenCount: number;
+}
+
+export type ContextStrategy = "hard-truncation" | "sliding-window" | "summarization" | "token-aware";

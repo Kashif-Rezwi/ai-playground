@@ -5,4 +5,4 @@ healthRouter.get("/", async (req, res) => {
     res.send({ status: "ok", message: "Conversation and Memory Service is running!" });
 })
 
-export { healthRouter };
+export default healthRouter;
