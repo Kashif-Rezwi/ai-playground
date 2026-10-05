@@ -1,4 +1,5 @@
 import { SummarizationPrompt } from "./trim-strategy/summarization/prompt";
+import { ContextStrategy } from "./types";
 
 const CONFIG = {
     TEMPERATURE: 0.7,
@@ -18,6 +19,8 @@ const CONFIG = {
     SUMMARIZATION_MAX_TOKENS: 300,
     // token-aware trimming
     MAX_RESPONSE_TOKENS: 500,
+    // context management strategy: "hard-truncation" | "sliding-window" | "summarization" | "token-aware"
+    CONTEXT_STRATEGY: "token-aware" as ContextStrategy,
 };
 
 // Message limit should be a odd number to ensure the system prompt is always preserved.
