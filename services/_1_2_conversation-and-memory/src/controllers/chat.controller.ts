@@ -38,6 +38,17 @@ const chatController = {
             console.error("Error retrieving conversation history:", error);
             return res.status(500).json({ error: "Internal server error" });
         }
+    },
+
+    async clearHistory(req: Request, res: Response): Promise<Response> {
+        try {
+            // Reset the conversation history
+            await chatService.clearHistory();
+            return res.status(200).json({ message: "Conversation history cleared", messages: [] });
+        } catch (error) {
+            console.error("Error clearing conversation history:", error);
+            return res.status(500).json({ error: "Internal server error" });
+        }
     }
 }
 
