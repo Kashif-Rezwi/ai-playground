@@ -24,9 +24,7 @@ function printHistory(messages: Message[]): void {
         const number = String(index + 1).padStart(3);
         const role = message.role.padEnd(9); // "assistant" is the longest role
 
-        for (const line of message.content.split("\n")) {
-            console.log(`${number}  ${role}: ${line}\n`);
-        }
+        console.log(`${number}  ${role}: ${message.content}\n`);
     });
 }
 
