@@ -80,6 +80,7 @@ async function startCli() {
 
             const assistantMessage = chatResponse.messages[chatResponse.messages.length - 1].content;
 
+            console.log(`\n[TOKENS] ${chatResponse.tokenCount} tokens · ${chatResponse.messages.length} messages in history`);
             console.log(`\nAssistant: ${assistantMessage}\n`);
         } catch (error) {
             console.error("Error generating chat response:", error);

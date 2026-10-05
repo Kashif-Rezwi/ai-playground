@@ -2,6 +2,7 @@ import groqClient from "./llm.service";
 import { GenerateChatRequest, GenerateChatResponse, Message } from "../utils/types";
 import { countTokens } from "../utils/countTokens";
 import { prepareContext } from "../utils/context-manager";
+import CONFIG from "../utils/config";
 
 let conversationHistory: Message[] = [];
 
@@ -20,7 +21,7 @@ const chatService = {
         
         // Call the LLM API
         const rawResponse  = await groqClient.chat.completions.create({
-            model: 'openai/gpt-oss-20b',
+            model: CONFIG.MODEL,
             messages: messagesForRequest,
             max_tokens: maxTokens,
             temperature: temperature,
