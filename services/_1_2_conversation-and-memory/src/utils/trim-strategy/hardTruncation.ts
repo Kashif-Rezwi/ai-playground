@@ -7,7 +7,7 @@ export function hardTruncation(messages: Message[]): Message[] {
         return messages;
     }
 
-    console.log(`[TRUNCATE] History exceeded ${CONFIG.MAX_MESSAGES_TO_KEEP} messages. Truncating...`);
+    console.log(`\n[TRUNCATE] History exceeded ${CONFIG.MAX_MESSAGES_TO_KEEP} messages. Truncating...`);
 
     // Always extract the system prompt first so we don't lose it
     const systemPrompt = messages[0];

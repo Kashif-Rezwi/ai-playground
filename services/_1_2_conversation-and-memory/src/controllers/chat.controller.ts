@@ -28,6 +28,16 @@ const chatController = {
             console.error("Error generating chat response:", error);
             return res.status(500).json({ error: "Internal server error" });
         }
+    },
+
+    async getHistory(req: Request, res: Response): Promise<Response> {
+        try {
+            // Return the conversation history
+            return res.status(200).json({ messages: await chatService.getConversationHistory() });
+        } catch (error) {
+            console.error("Error retrieving conversation history:", error);
+            return res.status(500).json({ error: "Internal server error" });
+        }
     }
 }
 

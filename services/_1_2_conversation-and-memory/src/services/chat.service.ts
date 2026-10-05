@@ -44,6 +44,10 @@ const chatService = {
             messages: conversationHistory,
             tokenCount: totalTokenCount
         };
+    },
+
+    async getConversationHistory(): Promise<Message[]> {
+        return conversationHistory;
     }
 }
 
