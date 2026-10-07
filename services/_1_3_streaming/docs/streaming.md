@@ -78,6 +78,8 @@ The `delta` field includes only the new piece of content in that chunk, not the 
 
 The final chunk has `finish_reason` set to `"stop"` (or `"length"` if it hit `max_tokens`) and an empty delta.
 
+**Note — this app's model is a reasoning model:** `openai/gpt-oss-20b` streams a chain-of-thought before the answer. In this app there are three kinds of deltas: the first chunk carries `delta: { role: "assistant", content: "" }`, then *reasoning* deltas (`delta: { reasoning: "...", channel: "analysis" }`), then the `content` deltas that make up the visible answer, and finally a chunk with an empty `delta` and `finish_reason: "stop"`. Reasoning tokens count against `max_tokens` — the final chunk's `usage` object reports them (`completion_tokens_details.reasoning_tokens`).
+
 ---
 
 ### Backpressure
@@ -182,7 +184,7 @@ Extend the Phase 1.2 conversation loop to:
 5. Measure and log **Time to First Token (TTFT)** and **total generation time**
 6. Only append the completed response to conversation history after the stream ends
 7. Handle a mid-stream connection drop gracefully, log a warning, discard the partial response
-8. Support both streaming and non-streaming mode via an environment variable flag so behavior can be compared side by side.
+8. Measure per-chunk throughput (a chunk-count approximation of tokens/sec) and surface the `finish_reason` of every response in a metrics line.
 
 No UI is needed. The terminal acts as the interface, where observing tokens appear one by one in the CLI demonstrates the streaming process.
 
@@ -212,18 +214,17 @@ Once the app is working, run each of these deliberately. Each one is designed to
 ### Experiment 1 — Streaming vs Buffered — Perceived Latency
 **Covers:** SSE streaming, perceived latency, TTFT vs total generation time
 
-**Setup:** The app supports toggling between streaming and non-streaming mode via an environment variable flag.
+**Setup:** This app always streams — there is no toggle. For a live side-by-side comparison, use the Phase 1.2 conversation loop, which calls the same model in buffered (non-streaming) mode: run its CLI from the repo root with `npm run cli --workspace @ai-playground/conversation-and-memory`.
 
 **Steps:**
-1. Set `STREAM=false` (or the equivalent env flag) and send this prompt: `"Write a detailed explanation of how TCP/IP works, covering all four layers with examples."`
-2. Time how long the blank screen lasts before the response appears
-3. Set `STREAM=true` and send the exact same prompt
-4. Watch the `⚡ TTFT:` log line. Note when the first token arrives vs when the full response finishes
+1. In the Phase 1.2 (buffered) CLI, send this prompt: `"Write a detailed explanation of how TCP/IP works, covering all four layers with examples."` and time how long the blank screen lasts before anything appears
+2. In this app's streaming CLI (`npm run cli`), send the exact same prompt
+3. Watch the `⚡` metrics line. `TTFT` is the moment the first word appeared on screen, `total` is how long the buffered version made you wait for anything at all
 
 **What to observe:**
 - How many seconds does the buffered version make you wait before anything appears?
-- In streaming mode, does the first word appear in under 500ms even though the full response takes several seconds?
-- Does the *total time* to receive the full response differ between modes?
+- In streaming mode, does the first word appear in under 500ms (`TTFT`) even though the full response takes several seconds (`total`)?
+- Does the *total time* to receive the full response differ between the two apps?
 
 **Expected insight:** Streaming doesn't make the model faster, total generation time is identical. It eliminates perceived latency by surfacing the first token immediately. The UX improvement is dramatic even though no actual computation is saved.
 
@@ -232,7 +233,7 @@ Once the app is working, run each of these deliberately. Each one is designed to
 ### Experiment 2 — Time to First Token (TTFT) — What Affects It
 **Covers:** TTFT measurement, prompt length impact, model processing time
 
-**Setup:** Watch the `⚡ TTFT: Xms` log line printed after the first chunk arrives. All tests use `STREAM=true`.
+**Setup:** Watch the `⚡ TTFT: Xms` value in the `⚡` metrics line printed after each response completes.
 
 **Steps:**
 1. Send a minimal prompt: `"Hi."`, record the TTFT
@@ -244,6 +245,7 @@ Once the app is working, run each of these deliberately. Each one is designed to
 - Does TTFT increase as the input prompt gets longer?
 - Is the TTFT consistent across runs of the same prompt or does it vary?
 - Does TTFT ever exceed 500ms? Under what conditions?
+- Note: `openai/gpt-oss-20b` is a reasoning model — the chain-of-thought is generated before the first content token, so the measured TTFT includes reasoning time and can exceed 500ms even for short prompts.
 
 **Expected insight:** TTFT grows with prompt length because the model must process the entire input before it can produce the first output token. Longer prompts = longer prefill phase = higher TTFT. This is why lean system prompts matter for real-time applications.
 
@@ -252,16 +254,16 @@ Once the app is working, run each of these deliberately. Each one is designed to
 ### Experiment 3 — Inspecting the Raw Chunk Structure
 **Covers:** SSE chunk structure, `delta` field, `finish_reason`, stream termination
 
-**Setup:** Add a temporary `console.log(chunk)` inside the `for await...of` loop before extracting the delta, then run a short prompt.
+**Setup:** Temporarily add `console.log(JSON.stringify(chunk))` at the top of the `for await...of` loop in `src/services/chat.service.ts` (before the delta is extracted), then run a short prompt. `JSON.stringify` is needed so the nested `delta` object is fully visible — a plain `console.log(chunk)` prints it as `[Object]`. Remove it when done.
 
 **Steps:**
-1. Send: `"Name three colors."` with raw chunk logging enabled
+1. Send: `"Name three colors."` with the raw chunk logging in place
 2. Scroll through the logged chunks, find the first chunk, a mid-stream chunk, and the final chunk
 3. Look for:
    - `choices[0].delta.content` — what does the first chunk contain?
    - `choices[0].finish_reason` — when does this change from `null`?
    - The final chunk with empty delta and `finish_reason: "stop"` or `"length"`
-4. Now send the same prompt with `max_tokens: 5`, does the final chunk show `finish_reason: "length"` instead of `"stop"`?
+4. Now temporarily set `max_tokens: 5` in the `create()` call in `src/services/chat.service.ts` (or `MAX_TOKENS: 5` in `src/utils/config.ts`) and send the same prompt, does the final chunk show `finish_reason: "length"` instead of `"stop"`? (The app also prints a warning when a response is truncated.) With such a tiny budget the reasoning phase can consume all 5 tokens before any content — expect no visible text, a `TTFT: n/a` in the metrics line, and `finish_reason: "length"` in the raw chunks.
 
 **What to observe:**
 - Is the first chunk always a complete word or can it be a partial character/syllable?
@@ -288,21 +290,21 @@ Once the app is working, run each of these deliberately. Each one is designed to
 - Can a single word arrive split across two chunks?
 - How does the visual experience differ when rendering delta-by-delta vs appending to a growing string?
 
-**Expected insight:** Deltas are arbitrary splits of the token stream, not words, not sentences. The correct pattern is always to accumulate into `fullResponse` and render that. The `⚡ Speed: X tokens/sec` metric is calculated over the entire stream, not per-chunk, precisely because individual deltas are meaningless units.
+**Expected insight:** Deltas are arbitrary splits of the token stream, not words, not sentences. The correct pattern is always to accumulate into `fullResponse` and render that. The `speed: ~X chunks/sec` value in the `⚡` metrics line is calculated over the entire stream, not per-chunk, precisely because individual deltas are meaningless units.
 
 ---
 
 ### Experiment 5 — Mid-Stream Abort & History Safety
 **Covers:** Partial response handling, conversation history integrity, stream error path
 
-**Setup:** Start a streaming response to a long-answer prompt. Uncomment the throw line in `chat.ts` at line 46 before running this experiment.
+**Setup:** Start a streaming response to a long-answer prompt. Temporarily add a simulated failure inside the `if (delta)` block of the chunk loop in `src/services/chat.service.ts` before running this experiment: `if (chunkCount === 5) throw new Error("Simulated mid-stream failure");` — remove it once the experiment is done.
 
 **Steps:**
-1. Uncomment the throw line in `chat.ts`: `if (tokenCount === 5) throw new Error("Simulated mid-stream failure")`
+1. Add the simulated failure line inside the `if (delta)` block in `src/services/chat.service.ts`: `if (chunkCount === 5) throw new Error("Simulated mid-stream failure")`
 2. Send: `"List and explain 20 common HTTP status codes with examples for each."`
-3. Watch the terminal partial tokens appear, then the `⚠️ Stream failed` and `Partial response discarded. History restored to last clean state.` messages log
-4. Type `history`, inspect the conversation array
-5. Re-comment the throw line when done
+3. Watch the terminal partial tokens appear, then the `Stream failed: Simulated mid-stream failure` and `Partial response discarded. History restored to last clean state.` messages log
+4. Type `/history`, inspect the conversation array
+5. Remove the simulated failure line when done
 6. Send another message and confirm the conversation continues normally without an API error
 
 **What to observe:**
@@ -315,9 +317,9 @@ Once the app is working, run each of these deliberately. Each one is designed to
 ---
 
 ### Experiment 6 — Throughput & Tokens Per Second
-**Covers:** Model throughput, `⚡ Speed:` metric, generation rate across prompt types
+**Covers:** Model throughput, `speed:` metric, generation rate across prompt types
 
-**Setup:** Watch the `⚡ Speed: X tokens/sec` log that appears after each stream completes. Run `STREAM=true` for all tests.
+**Setup:** Watch the `speed: ~X chunks/sec` value in the `⚡` metrics line that appears after each stream completes.
 
 **Steps:**
 1. Send a creative prose prompt: `"Write a short story about a lighthouse keeper who discovers a message in a bottle."` record tokens/sec
@@ -330,7 +332,7 @@ Once the app is working, run each of these deliberately. Each one is designed to
 - Does creative prose generate faster or slower than code?
 - Note: the app counts *chunks*, not actual tokens via a tokenizer. Does this measurement feel accurate or does it seem off?
 
-**Expected insight:** The `⚡ Speed:` metric is a rough approximation, tokens/sec varies across prompt types and even across runs of the same prompt, server load and network latency are real factors. The number also feels inflated because the app counts chunks, not actual tokens (each chunk carries 1–3 tokens on average). For a true throughput figure, use the `usage` field from the final chunk instead.
+**Expected insight:** The `speed: ~X chunks/sec` metric is a rough approximation, tokens/sec varies across prompt types and even across runs of the same prompt, server load and network latency are real factors. The number also feels inflated because the app counts chunks, not actual tokens (each chunk carries 1–3 tokens on average). For a true throughput figure, use the `usage` field from the final chunk instead.
 
 ---
 
@@ -349,7 +351,7 @@ A stream that ends with `finish_reason: "stop"` completed naturally. One that en
 The `for await...of` loop must stay lightweight. This app does only two things per chunk: append to `fullResponse` and write to stdout. Anything heavier, parsing, database writes, token counting, belongs after the stream ends. Blocking the loop creates backpressure and delays rendering.
 
 **Mistake 5 — Measuring throughput with chunk count instead of real tokens**  
-The `⚡ Speed: X tokens/sec` metric in this app counts chunks, not actual tokens. Each chunk contains 1–3 tokens on average, so the count can be off by 2–3×. For accurate throughput measurement, use the `usage` object returned in the final chunk (when the API supports it) or count tokens with `tiktoken` post-stream.
+The `speed: ~X chunks/sec` value in the `⚡` metrics line in this app counts chunks, not actual tokens. Each chunk contains 1–3 tokens on average, so the count can be off by 2–3×. For accurate throughput measurement, use the `usage` object returned in the final chunk (when the API supports it) or count tokens with `tiktoken` post-stream.
 
 **Mistake 6 — Confusing SSE with WebSockets**  
 SSE is a standard HTTP connection, unidirectional, server to client, over a single long-lived response. WebSockets are bidirectional, stateful, and require a handshake upgrade. LLM streaming uses SSE because the client never needs to send data mid-stream. Adding WebSockets here would be unnecessary complexity.
@@ -366,7 +368,7 @@ Streaming and structured JSON are incompatible, you cannot parse a partial JSON 
 - Chunks are arbitrary splits of the token stream, a single word can arrive across two chunks. Always accumulate into `fullResponse`, never render raw deltas as complete units (Experiment 3, 4)
 - SSE is a plain HTTP connection, unidirectional, simple, and exactly right for LLM streaming. WebSockets are unnecessary here (Common Mistake 6)
 - Conversation history stays clean because the assistant message is only appended after the stream completes. A mid-stream abort means no push, history is never corrupted by partial responses (Experiment 5)
-- The `⚡ Speed: X tokens/sec` metric is a rough approximation based on chunk count. For production accuracy, use the `usage` field from the final chunk or `tiktoken` (Experiment 6)
+- The `speed: ~X chunks/sec` value in the `⚡` metrics line is a rough approximation based on chunk count. For production accuracy, use the `usage` field from the final chunk or `tiktoken` (Experiment 6)
 - Knowing when *not* to stream is as important as knowing how — structured JSON output, tool calls, and background jobs all need buffered responses, not streaming (Common Mistake 7)
 
 ---

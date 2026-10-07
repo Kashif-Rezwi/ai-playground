@@ -4,12 +4,14 @@
   "description": "",
   "main": "src/server.ts",
   "scripts": {
-    "dev": "npx tsx src/server.ts"
+    "dev": "npx tsx src/server.ts",
+    "cli": "npx tsx src/cli.ts"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "dotenv": "^16.6.1",
     "express": "^5.2.1",
     "groq-sdk": "^1.6.0",
     "tiktoken": "^1.0.22"

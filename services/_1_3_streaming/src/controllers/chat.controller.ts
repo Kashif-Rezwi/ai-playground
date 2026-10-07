@@ -5,12 +5,12 @@ import chatService from "../services/chat.service";
 
 const chatController = {
     async stream(req: Request, res: Response): Promise<void> {
-        const { 
-            systemPrompt = CONFIG.SYSTEM_PROMPT, 
-            userPrompt = "", 
-            temperature = CONFIG.TEMPERATURE, 
-            maxTokens = CONFIG.MAX_TOKENS, 
-            topP = CONFIG.TOP_P 
+        const {
+            systemPrompt = CONFIG.SYSTEM_PROMPT,
+            userPrompt = "",
+            temperature = CONFIG.TEMPERATURE,
+            maxTokens = CONFIG.MAX_TOKENS,
+            topP = CONFIG.TOP_P
         }: ChatRequest = req.body;
 
         // Validate required fields
@@ -28,13 +28,33 @@ const chatController = {
             // Call the chat service to stream the response
             const streamGenerator = chatService.streamText({ systemPrompt, userPrompt, temperature, maxTokens, topP });
             for await (const chunk of streamGenerator) {
-                res.write(`data: ${chunk})\n\n`);
+                res.write(JSON.stringify({ token: chunk }) + '\n');
             }
-            res.write('data: [DONE]\n\n');
-            res.end();
+            res.end("\n");
         } catch (error) {
             console.error("Error streaming chat response:", error);
             res.status(500).json({ error: "Internal server error" });
+        }
+    },
+
+    async getHistory(req: Request, res: Response): Promise<Response> {
+        try {
+            // Return the conversation history
+            return res.status(200).json({ messages: await chatService.getConversationHistory() });
+        } catch (error) {
+            console.error("Error retrieving conversation history:", error);
+            return res.status(500).json({ error: "Internal server error" });
+        }
+    },
+
+    async clearHistory(req: Request, res: Response): Promise<Response> {
+        try {
+            // Reset the conversation history
+            await chatService.clearHistory();
+            return res.status(200).json({ message: "Conversation history cleared", messages: [] });
+        } catch (error) {
+            console.error("Error clearing conversation history:", error);
+            return res.status(500).json({ error: "Internal server error" });
         }
     }
 }
