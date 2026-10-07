@@ -2,7 +2,7 @@ import CONFIG from "../utils/config";
 import { ChatRequest, Message } from "../utils/types";
 import groqClient from "./llm.service";
 
-const conversationHistory: Message[] = [];
+let conversationHistory: Message[] = [];
 
 const chatService = {
     async *streamText({ systemPrompt, userPrompt, temperature, maxTokens, topP }: ChatRequest): AsyncGenerator<string> {
@@ -47,6 +47,15 @@ const chatService = {
 
             throw error;
         }
+    },
+
+    async getConversationHistory(): Promise<Message[]> {
+        return conversationHistory;
+    },
+
+    async clearHistory(): Promise<void> {
+        // Reset the in-memory conversation history.
+        conversationHistory = [];
     }
 }
 
