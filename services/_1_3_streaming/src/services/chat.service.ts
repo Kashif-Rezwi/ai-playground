@@ -1,5 +1,5 @@
 import CONFIG from "../utils/config";
-import { ChatRequest, ChatResponse, Message } from "../utils/types";
+import { ChatRequest, Message } from "../utils/types";
 import groqClient from "./llm.service";
 
 const conversationHistory: Message[] = [];
@@ -43,7 +43,7 @@ const chatService = {
             console.error(`Stream failed: ${(error as Error).message}`);
 
             // Remove the user message if streaming failed.
-                conversationHistory.pop();
+            conversationHistory.pop();
 
             throw error;
         }
