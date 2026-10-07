@@ -28,10 +28,9 @@ const chatController = {
             // Call the chat service to stream the response
             const streamGenerator = chatService.streamText({ systemPrompt, userPrompt, temperature, maxTokens, topP });
             for await (const chunk of streamGenerator) {
-                res.write(`data: ${chunk})\n\n`);
+                res.write(JSON.stringify({ token: chunk }) + '\n');
             }
-            res.write('data: [DONE]\n\n');
-            res.end();
+            res.end("\n");
         } catch (error) {
             console.error("Error streaming chat response:", error);
             res.status(500).json({ error: "Internal server error" });

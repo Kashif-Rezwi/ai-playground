@@ -10,3 +10,11 @@ export interface ChatRequest {
     maxTokens?: number;
     topP?: number;
 }
+
+export interface StreamStats {
+    ttftMs: number | null;
+    totalMs: number | null;
+    chunks: number;
+    tokensPerSec: number | null;
+    finishReason: string | null;
+}

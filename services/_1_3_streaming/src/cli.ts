@@ -64,6 +64,8 @@ async function startCli() {
             continue;
         }
 
+         if (!userPrompt) continue;
+
         try {
             const chatResponse = await chatService.streamText({
                 systemPrompt: CONFIG.SYSTEM_PROMPT,
@@ -78,7 +80,12 @@ async function startCli() {
             for await (const chunk of chatResponse) {
                 process.stdout.write(chunk);
             }
-            console.log("\n");
+
+            // Stream metrics (TTFT is null when no content token ever arrived,
+            // e.g. the entire budget was consumed by reasoning tokens.
+            const stats = await chatService.getStats();
+            const ttft = stats.ttftMs !== null ? `${stats.ttftMs}ms` : "n/a";
+            console.log(`\n\n⚡ TTFT: ${ttft} · total: ${stats.totalMs}ms · speed: ~${stats.tokensPerSec ?? "n/a"} chunks/sec (${stats.chunks} chunks) · finish_reason: ${stats.finishReason}\n`);
 
         } catch (error) {
             console.error("Error occurred while processing user input:", error);
