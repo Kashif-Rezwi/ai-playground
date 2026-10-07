@@ -10,8 +10,3 @@ export interface ChatRequest {
     maxTokens?: number;
     topP?: number;
 }
-
-export interface ChatResponse {
-    messages: Message[];
-    tokenCount: number;
-}
