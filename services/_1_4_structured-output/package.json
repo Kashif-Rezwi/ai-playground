@@ -1,34 +1,25 @@
 {
   "name": "@ai-playground/structured-output",
   "version": "1.0.0",
-  "description": "",
+  "description": "Phase 1.4 — Structured Output",
   "main": "src/server.ts",
   "scripts": {
-    "start": "npx tsx src/server.ts",
-    "review": "npx tsx src/index.ts sample/sample.txt",
-    "experiment": "npx tsx src/experiment.ts"
+    "dev": "npx tsx src/server.ts",
+    "typecheck": "tsc --noEmit"
   },
-  "selector": [
-    {
-      "label": "structured-output · review",
-      "script": "review"
-    },
-    {
-      "label": "structured-output · experiment",
-      "script": "experiment"
-    }
-  ],
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "dotenv": "^16.6.1",
-    "openai": "^6.32.0",
+    "express": "^5.2.1",
+    "groq-sdk": "^1.6.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@types/express": "^5.0.6",
     "@types/node": "^24.12.0",
     "tsx": "^4.21.0",
-    "typescript": "^6.0.2"
+    "typescript": "^5.9.3"
   }
 }
