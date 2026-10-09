@@ -29,3 +29,10 @@ export interface Message {
     role: "system" | "user" | "assistant";
     content: string;
 }
+
+// Result of validating the model's response against JSON syntax and the Zod schema
+export interface validateResponseResult {
+    ok: boolean;
+    data: CodeReview;
+    feedback?: string;
+}

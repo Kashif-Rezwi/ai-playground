@@ -14,6 +14,9 @@ const CONFIG = {
 
     // Approach 1 — Prompt Engineering (Naive)
     SYSTEM_PROMPT: SYSTEM_PROMPT,
+
+    // Retry Configuration
+    MAX_RETRIES: 2,
 };
 
 export default CONFIG;

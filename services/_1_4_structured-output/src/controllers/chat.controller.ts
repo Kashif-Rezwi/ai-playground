@@ -22,8 +22,8 @@ const chatController = {
         } catch (error) {
             console.error("Error generating structured review:", error);
             const message = error instanceof Error ? error.message : "Internal server error";
-            // Determine status code based on error message content (a validation issue, return 422; otherwise, return 500)
-            const status = message.includes("not valid JSON") || message.includes("schema validation") ? 422 : 500;
+            // Validation failures (invalid JSON, wrong shape, or retries exhausted) → 422; anything else (API, network, config) → 500
+            const status = message.includes("validation") ? 422 : 500;
             return res.status(status).json({ error: message });
         }
     },
