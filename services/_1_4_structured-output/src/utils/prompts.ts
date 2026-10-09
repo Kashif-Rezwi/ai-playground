@@ -1,3 +1,4 @@
+import { CodeReviewJSONSchema } from "./schema";
 import { ApproachParams, ReviewMode } from "./types";
 
 // The expected shape of the JSON object returned by the model, as described in the prompt.
@@ -22,7 +23,7 @@ export const SYSTEM_PROMPT = [
     REVIEW_SHAPE,
 ].join("\n");
 
-// Approach 2 — JSON Mode: the API enforces valid JSON *syntax* 
+// Approach 2 — JSON Mode: the API enforces valid JSON *syntax*
 // but not the *shape* of the object. Zod validation is still required.
 export const JSON_MODE_SYSTEM_PROMPT = [
     "You are an expert code reviewer.",
@@ -30,6 +31,14 @@ export const JSON_MODE_SYSTEM_PROMPT = [
     "Valid JSON syntax is enforced by the API — but the shape must still be followed exactly.",
     "The JSON object must have EXACTLY this shape:",
     REVIEW_SHAPE,
+].join("\n");
+
+// Approach 3 — Schema Enforced (best): the API enforces 
+// valid JSON *syntax* and *shape* via constrained decoding.
+export const SCHEMA_MODE_SYSTEM_PROMPT = [
+    "You are an expert code reviewer.",
+    "Analyze the user's code and return your review as a JSON object.",
+    "The exact response shape is enforced by the JSON schema attached to this request — follow it.",
 ].join("\n");
 
 // The approach registry: mode → prompt + API-level enforcement knobs.
@@ -42,7 +51,13 @@ export function getModeApproachParams(mode: ReviewMode): ApproachParams {
             // response_format enforces syntax, not shape — Zod validation stays on
             return { systemPrompt: JSON_MODE_SYSTEM_PROMPT, responseFormat: { type: "json_object" } };
         case "schema":
-            // response_format: json_schema, built from the Zod schema
-            throw new Error('Approach "schema" is not implemented yet.');
+            // response_format: json_schema enforces syntax AND shape — Zod validation is redundant but harmless
+            return {
+                systemPrompt: SCHEMA_MODE_SYSTEM_PROMPT,
+                responseFormat: {
+                    type: "json_schema",
+                    json_schema: { name: "CodeReview", strict: true, schema: CodeReviewJSONSchema },
+                },
+            };
     }
 }

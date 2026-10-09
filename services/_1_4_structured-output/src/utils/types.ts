@@ -35,8 +35,18 @@ export type ValidationOutcome =
     | { ok: true; data: CodeReview }
     | { ok: false; feedback: string };
 
-// Per-approach parameters: the system prompt + any API-level enforcement knobs.
+// Available API-level response_format knobs:
+// - json_object: valid JSON syntax guaranteed, shape NOT
+// - json_schema: syntax AND shape guaranteed (constrained decoding)
+export type ResponseFormat =
+    | { type: "json_object" }
+    | {
+          type: "json_schema";
+          json_schema: { name: string; strict: boolean; schema: Record<string, unknown> };
+      };
+
+// The per-approach parameters: system prompt + optional API-level enforcement knobs
 export interface ApproachParams {
     systemPrompt: string;
-    responseFormat?: { type: "json_object" };
+    responseFormat?: ResponseFormat;
 }
