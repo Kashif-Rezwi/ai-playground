@@ -30,9 +30,7 @@ export interface Message {
     content: string;
 }
 
-// Result of validating the model's response against JSON syntax and the Zod schema
-export interface validateResponseResult {
-    ok: boolean;
-    data: CodeReview;
-    feedback?: string;
-}
+// Result of validating the model's response against JSON syntax and the Zod schema.
+export type ValidationOutcome =
+    | { ok: true; data: CodeReview }
+    | { ok: false; feedback: string };

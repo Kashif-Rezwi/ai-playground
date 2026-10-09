@@ -1,16 +1,11 @@
 import groqClient from "./llm.service";
 import CONFIG from "../utils/config";
+import { getSystemPrompt } from "../utils/prompts";
 import { CodeReviewSchema } from "../utils/schema";
-import { Message, ReviewMode, ReviewRequest, ReviewResult, validateResponseResult } from "../utils/types";
+import { Message, ReviewRequest, ReviewResult, ValidationOutcome } from "../utils/types";
 
-// Helper function to get the system prompt based on the review mode
-function getSystemPrompt(mode: ReviewMode): string {
-    if (mode === "prompt") return CONFIG.SYSTEM_PROMPT;
-    throw new Error(`Approach "${mode}" is not implemented yet.`);
-}
-
-// Validation function to check if the model's response is valid JSON and matches the schema
-function validateResponse(rawResponse: string): validateResponseResult {
+// Validation function to check if the model's response is valid JSON and matches the schema.
+function validateResponse(rawResponse: string): ValidationOutcome {
     // Validation layer 1 — is it valid JSON syntax?
     let parsed: unknown;
     try {
@@ -18,7 +13,6 @@ function validateResponse(rawResponse: string): validateResponseResult {
     } catch (error) {
         return {
             ok: false,
-            data: null as any,
             feedback: `Your previous response was NOT valid JSON (${(error as Error).message}). Do not wrap the JSON in markdown code fences and do not add any text around it.`,
         };
     }
@@ -31,7 +25,6 @@ function validateResponse(rawResponse: string): validateResponseResult {
             .join("\n");
         return {
             ok: false,
-            data: null as any,
             feedback: `Your previous response was valid JSON but does not match the required schema. Fix these problems:\n${issues}`,
         };
     }
