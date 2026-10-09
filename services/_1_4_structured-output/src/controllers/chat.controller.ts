@@ -17,8 +17,8 @@ const chatController = {
         }
 
         try {
-            const review = await chatService.generateStructuredOutput({ code, mode });
-            return res.status(200).json({ message: "Code review generated successfully", data: review });
+            const { review, stats } = await chatService.generateStructuredOutput({ code, mode });
+            return res.status(200).json({ message: "Code review generated successfully", data: review, stats });
         } catch (error) {
             console.error("Error generating structured review:", error);
             const message = error instanceof Error ? error.message : "Internal server error";

@@ -1,7 +1,7 @@
 import groqClient from "./llm.service";
 import CONFIG from "../utils/config";
-import { CodeReviewSchema, CodeReview } from "../utils/schema";
-import { Message, ReviewMode, ReviewRequest } from "../utils/types";
+import { CodeReviewSchema } from "../utils/schema";
+import { Message, ReviewMode, ReviewRequest, ReviewResult } from "../utils/types";
 
 // Helper function to get the system prompt based on the review mode
 function getSystemPrompt(mode: ReviewMode): string {
@@ -19,7 +19,10 @@ function parseJSONResponse(rawResponse: string): unknown {
 }
 
 const chatService = {
-    async generateStructuredOutput({ code, mode = "prompt" }: ReviewRequest): Promise<CodeReview> {
+    async generateStructuredOutput({ code, mode = "prompt" }: ReviewRequest): Promise<ReviewResult> {
+        // Start the timer for total latency measurement
+        const startedAt = Date.now();
+
         const messages: Message[] = [
             { role: "system", content: getSystemPrompt(mode) },
             { role: "user", content: `Review this code:\n\n${code}` },
@@ -48,7 +51,17 @@ const chatService = {
             throw new Error(`Model response was valid JSON but failed schema validation:\n${issues}`);
         }
 
-        return result.data;
+        // 4. Return the structured review and stats
+        return {
+            review: result.data,
+            stats: {
+                approach: mode,
+                retries: 0,
+                inputTokens: response.usage?.prompt_tokens ?? 0,
+                outputTokens: response.usage?.completion_tokens ?? 0,
+                totalLatencyMs: Date.now() - startedAt,
+            },
+        };
     },
 };
 
