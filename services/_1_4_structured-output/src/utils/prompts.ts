@@ -1,12 +1,7 @@
-import { ReviewMode } from "./types";
+import { ApproachParams, ReviewMode } from "./types";
 
-// Approach 1 — Prompt Engineering (Naive): instruction-following only.
-// The JSON instruction lives entirely in the prompt — nothing is enforced at the API level.
-export const SYSTEM_PROMPT = [
-    "You are an expert code reviewer.",
-    "Analyze the user's code and respond with a SINGLE valid JSON object — nothing else.",
-    "No markdown code fences, no explanations, no apology text, no text before or after the JSON.",
-    'The JSON object must have EXACTLY this shape:',
+// The expected shape of the JSON object returned by the model, as described in the prompt.
+const REVIEW_SHAPE = [
     "{",
     '  "language": string (detected programming language),',
     '  "summary": string (one paragraph overview),',
@@ -16,10 +11,38 @@ export const SYSTEM_PROMPT = [
     '  "strengths": array of strings,',
     '  "metrics": { "readability": number (0-10), "maintainability": number (0-10), "testability": number (0-10) }',
     "}",
-].join("\n")
+].join("\n");
 
-// Export a function to get the system prompt based on the review mode.
-export function getSystemPrompt(mode: ReviewMode): string {
-    if (mode === "prompt") return SYSTEM_PROMPT;
-    throw new Error(`Approach "${mode}" is not implemented yet.`);
+// Approach 1 — Prompt Engineering (Naive): instruction-following only.
+export const SYSTEM_PROMPT = [
+    "You are an expert code reviewer.",
+    "Analyze the user's code and respond with a SINGLE valid JSON object — nothing else.",
+    "No markdown code fences, no explanations, no apology text, no text before or after the JSON.",
+    "The JSON object must have EXACTLY this shape:",
+    REVIEW_SHAPE,
+].join("\n");
+
+// Approach 2 — JSON Mode: the API enforces valid JSON *syntax* 
+// but not the *shape* of the object. Zod validation is still required.
+export const JSON_MODE_SYSTEM_PROMPT = [
+    "You are an expert code reviewer.",
+    "Analyze the user's code and return your review as a JSON object.",
+    "Valid JSON syntax is enforced by the API — but the shape must still be followed exactly.",
+    "The JSON object must have EXACTLY this shape:",
+    REVIEW_SHAPE,
+].join("\n");
+
+// The approach registry: mode → prompt + API-level enforcement knobs.
+export function getModeApproachParams(mode: ReviewMode): ApproachParams {
+    switch (mode) {
+        case "prompt":
+            // No API-level knobs — pure instruction-following
+            return { systemPrompt: SYSTEM_PROMPT };
+        case "json":
+            // response_format enforces syntax, not shape — Zod validation stays on
+            return { systemPrompt: JSON_MODE_SYSTEM_PROMPT, responseFormat: { type: "json_object" } };
+        case "schema":
+            // response_format: json_schema, built from the Zod schema
+            throw new Error('Approach "schema" is not implemented yet.');
+    }
 }

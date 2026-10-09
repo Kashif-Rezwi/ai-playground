@@ -34,3 +34,9 @@ export interface Message {
 export type ValidationOutcome =
     | { ok: true; data: CodeReview }
     | { ok: false; feedback: string };
+
+// Per-approach parameters: the system prompt + any API-level enforcement knobs.
+export interface ApproachParams {
+    systemPrompt: string;
+    responseFormat?: { type: "json_object" };
+}

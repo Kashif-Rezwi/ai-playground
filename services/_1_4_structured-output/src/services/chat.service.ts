@@ -1,6 +1,6 @@
 import groqClient from "./llm.service";
 import CONFIG from "../utils/config";
-import { getSystemPrompt } from "../utils/prompts";
+import { getModeApproachParams } from "../utils/prompts";
 import { CodeReviewSchema } from "../utils/schema";
 import { Message, ReviewRequest, ReviewResult, ValidationOutcome } from "../utils/types";
 
@@ -37,6 +37,9 @@ const chatService = {
         // Start the timer for total latency measurement
         const startedAt = Date.now();
 
+        // Per-approach parameters: the system prompt + any API-level enforcement knobs (response_format, etc.)
+        const { systemPrompt, responseFormat } = getModeApproachParams(mode);
+
         // Retry state — tokens accumulate across ALL attempts
         let retries = 0;
         let inputTokens = 0;
@@ -44,7 +47,7 @@ const chatService = {
 
         // Initialize the conversation with the system prompt and user code
         let messages: Message[] = [
-            { role: "system", content: getSystemPrompt(mode) },
+            { role: "system", content: systemPrompt },
             { role: "user", content: `Review this code:\n\n${code}` },
         ];
 
@@ -57,6 +60,8 @@ const chatService = {
                 max_tokens: CONFIG.MAX_TOKENS,
                 temperature: CONFIG.TEMPERATURE,
                 top_p: CONFIG.TOP_P,
+                // API-level enforcement knob — spread in only when the approach defines one
+                ...(responseFormat ? { response_format: responseFormat } : {}),
             });
 
             inputTokens += response.usage?.prompt_tokens ?? 0;
