@@ -25,31 +25,6 @@ function readCodeFile(path: string): string | null {
     }
 }
 
-// Piped stdin → one-shot: the entire stdin IS the code snippet (doc requirement #1, "stdin" half)
-async function runOneShotStdin(mode: ReviewMode): Promise<void> {
-    const code = await new Promise<string>((resolve) => {
-        let full = "";
-        process.stdin.setEncoding("utf-8");
-        process.stdin.on("data", (chunk: string) => (full += chunk));
-        process.stdin.on("end", () => resolve(full));
-    });
-
-    if (!code.trim()) {
-        console.error("No code received on stdin.");
-        process.exit(1);
-    }
-
-    try {
-        const { review, stats } = await chatService.generateStructuredOutput({ code, mode });
-        console.log(formatReview(review));
-        printStatsFooter(stats);
-        process.exit(0);
-    } catch (error) {
-        console.error(`Review failed: ${(error as Error).message}`);
-        process.exit(1);
-    }
-}
-
 async function startCli(): Promise<void> {
     let currentMode = "prompt" as ReviewMode;
 
