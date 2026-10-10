@@ -29,10 +29,9 @@ export const CodeReviewSchema = z.object({
 // Auto-infer the TypeScript type from the schema
 export type CodeReview = z.infer<typeof CodeReviewSchema>;
 
-// Convert the Zod schema to a JSON Schema object for use with the API's response_format: 
-// json_schema enforcement knob. The $schema property is removed because 
-// the API doesn't need it, and it can cause validation errors if present.
-const converted = z.toJSONSchema(CodeReviewSchema) as { $schema?: string } & Record<string, unknown>;
+// Convert the Zod schema to a JSON Schema object for use with the API's response_format: json_schema enforcement knob.
+const converted = z.toJSONSchema(CodeReviewSchema);
+// The $schema property is removed because the API doesn't need it, and it can cause validation errors.
 delete converted.$schema;
 export const CodeReviewJSONSchema: Record<string, unknown> = converted;
 
