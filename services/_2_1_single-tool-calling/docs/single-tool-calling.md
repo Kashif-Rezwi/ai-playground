@@ -232,11 +232,12 @@ The content of the `tool` message must be a **string**. The model will parse wha
 
 A CLI weather agent that demonstrates the complete single tool call loop:
 
-1. One registered tool: `get_weather(city, unit?)` with a mock implementation (no external API key required)
-2. A `runner.ts` module that encapsulates the full tool call loop, first API call, tool detection, execution, and second API call, returned as a single promise
-3. A REPL chat loop that calls the runner and logs all intermediate state: `finish_reason`, tool name, raw arguments, tool result
-4. Transparent history inspection via the `history` command so the full message array is visible after any turn
-5. Both the "tool called" and "tool not called" paths observable in the same session, ask a weather question and a general question back to back
+1. One registered tool: `get_weather(city, unit?)` with a mock implementation (no external API key required). The mock DB covers the cities used in the experiments below (London, Tokyo, Sydney, Paris, Dubai, Cape Town, Moscow plus Mumbai, Delhi, Bangalore, Kolkata, Chennai) — unknown cities intentionally exercise the error path (Experiment 6).
+2. A `services/chat.service.ts` module that encapsulates the full tool call loop, first API call, tool detection, execution, and second API call, returned as a single promise. This is the `runner.ts` from the concept section, adapted to the `_1_2+` layered standard (`server.ts → routes/ → controllers/ → services/`).
+3. A REPL chat loop (`src/cli.ts`) that calls the service and logs all intermediate state: `finish_reason`, tool name, raw arguments, tool result, latency and token usage.
+4. Transparent history inspection via the `history` command (CLI `/history`, API `GET /api/chat/history`) plus `/clear` (`DELETE /api/chat/history`) so the full message array is visible after any turn.
+5. Both the "tool called" and "tool not called" paths observable in the same session, ask a weather question and a general question back to back.
+6. `tool_choice` defaults to `"auto"` via `CONFIG.TOOL_CHOICE`. Flip it to `"required"` / `"none"` in `src/utils/config.ts` for Experiment 5 — no code changes needed elsewhere.
 
 No external API required. No streaming (that's a Phase 2 enhancement to add later). No parallel tool calls (that's Phase 2.2). Just one tool, fully transparent, end to end.
 
@@ -245,23 +246,33 @@ No external API required. No streaming (that's a Phase 2 enhancement to add late
 ## File Structure
 
 ```
-services/single-tool-calling/
+services/_2_1_single-tool-calling/
 ├── package.json
 ├── tsconfig.json
 ├── docs/
 │   └── single-tool-calling.md
 └── src/
-    ├── chat.ts           ← REPL loop, entry point
-    ├── config.ts         ← MODEL, MAX_RESPONSE_TOKENS, SYSTEM_PROMPT
-    ├── types.ts          ← Message, ToolCall, ToolDefinition types
-    ├── runner.ts         ← The two-call tool loop (core logic)
-    └── tools/
-        ├── index.ts      ← Tool dispatcher (name → function)
-        ├── definitions.ts ← Tool schemas (OpenAI format)
-        └── weather.ts    ← Mock weather implementation
+    ├── server.ts               ← Express bootstrap (mounts /api/health, /api/chat)
+    ├── cli.ts                  ← REPL loop, entry point (calls chat.service, logs LOOP/TOOL/STATS)
+    ├── controllers/
+    │   └── chat.controller.ts  ← POST /generate + GET/DELETE /history
+    ├── routes/
+    │   ├── chat.route.ts       ← /generate, /history routes
+    │   └── health.route.ts
+    ├── services/
+    │   ├── chat.service.ts     ← The two-call tool loop (the "runner", adapted to the _1_2+ service layer)
+    │   └── llm.service.ts      ← Shared Groq client
+    ├── tools/
+    │   ├── registry.ts         ← Tool dispatcher (name → definition + execute) + TOOLS array
+    │   └── weather.ts          ← Mock weather implementation + WeatherArgsSchema (Zod)
+    └── utils/
+        ├── config.ts           ← MODEL, MAX_TOKENS, TEMPERATURE, TOP_P, TOOL_CHOICE, MAX_TOOL_ITERATIONS
+        ├── types.ts            ← Message (Groq ChatCompletionMessageParam), ToolDefinition, ToolTrace, request/response
+        ├── prompts.ts          ← SYSTEM_PROMPT
+        └── countTokens.ts      ← History token estimator (tool-message aware)
 ```
 
-The `runner.ts` separation is intentional. It keeps the tool call loop as a pure, importable function no readline, no REPL concerns. This makes it composable: Phase 2.2 will extend the runner, Phase 2.3 will wrap it with confirmation gates, Phase 2.4 will swap in real API implementations.
+The `services/chat.service.ts` separation is intentional. It keeps the tool call loop as a pure, importable function — no readline, no REPL concerns, no `console.log` side effects (logging lives in `cli.ts` / controller). This makes it composable: Phase 2.2 will extend the loop to iterate all `tool_calls`, Phase 2.3 will wrap it with confirmation gates, Phase 2.4 will swap in real API implementations. This mirrors the `_1_2+` layered standard (`server → routes → controller → service → llm.service`), replacing the earlier concept-only `runner.ts / chat.ts / config.ts / types.ts` sketch.
 
 ---
 
@@ -300,7 +311,7 @@ Once the app is working, run each of these deliberately. Each one surfaces a spe
 4. After the response arrives, type `history` and inspect the full message array
 
 **What to observe:**
-- How many messages are in history after this one turn? (Answer: 5 - system + user + assistant-with-tool-calls + tool-result + final-assistant)
+- How many messages are in history after this one turn? (Answer: 5 total — system + user + assistant-with-tool-calls + tool-result + final-assistant — i.e. 4 messages added by this turn.)
 - What does the assistant message at index 2 look like? Is `content` null? What's in `tool_calls`?
 - What does the tool message at index 3 look like? What is `tool_call_id` set to?
 - What does the final assistant message at index 4 look like? How does it use the tool data?
@@ -334,7 +345,7 @@ Once the app is working, run each of these deliberately. Each one surfaces a spe
 ### Experiment 3 — Inspecting the Raw Tool Call Message
 **Covers:** `assistant` message structure when `finish_reason === "tool_calls"`, `content: null`, raw argument string
 
-**Setup:** Add a temporary `console.log(JSON.stringify(assistantMessage, null, 2))` in `runner.ts` after receiving the first API response, before executing tools. Remove it after.
+**Setup:** The CLI logs `[TOOL] name(rawArgs) → result` on every tool turn, and `/history` shows the full array. For raw-shape inspection, add a temporary `console.log(JSON.stringify(assistantMessage, null, 2))` in `services/chat.service.ts` after receiving the first API response, before executing tools. Remove it after.
 
 **Steps:**
 1. Send: `"Weather in London please, in fahrenheit"`
@@ -358,10 +369,10 @@ Once the app is working, run each of these deliberately. Each one surfaces a spe
 **Setup:** The `unit` parameter is optional (not in `required`). The `city` parameter is required.
 
 **Steps:**
-1. Send: `"What's the weather in Cape Town?"` after the tool executes, type `history` and find `tool_calls[0].function.arguments`
+1. Send: `"What's the weather in Cape Town?"` after the tool executes, type `/history` (CLI) or `GET /api/chat/history` and find `tool_calls[0].function.arguments`
 2. Send: `"What's the weather in Cape Town in fahrenheit?"` check `arguments` again
 3. Send: `"What's the temperature in Cape Town?"` does "temperature" hint differently than "weather"?
-4. Now temporarily add `unit` to `required` in `definitions.ts`. Restart and send the first prompt again what does the model default to?
+4. Now temporarily add `unit` to `required` in `tools/registry.ts`. Restart and send the first prompt again what does the model default to?
 
 **What to observe:**
 - When `unit` is not in `required` and the user doesn't specify it, does `arguments` include `unit` or not?
@@ -375,7 +386,7 @@ Once the app is working, run each of these deliberately. Each one surfaces a spe
 ### Experiment 5 — `tool_choice` Forcing
 **Covers:** `tool_choice: "auto"` vs `"required"` vs `"none"`, practical use cases
 
-**Setup:** In `runner.ts`, change `tool_choice` from `"auto"` to `"required"` and restart.
+**Setup:** In `src/utils/config.ts`, change `TOOL_CHOICE` from `"auto"` to `"required"` and restart. (`services/chat.service.ts` passes `CONFIG.TOOL_CHOICE` straight to the API.)
 
 **Steps:**
 1. Send: `"What's the capital of France?"` observe what happens with `tool_choice: "required"`
@@ -400,12 +411,13 @@ Once the app is working, run each of these deliberately. Each one surfaces a spe
 **Setup:** Temporarily modify `weather.ts` to return an error JSON for a specific city.
 
 **Steps:**
-1. In `weather.ts`, add this at the top of `getWeather()`:
+1. In `tools/weather.ts`, add this at the top of `getWeather()`:
    ```typescript
    if (args.city.toLowerCase() === "atlantis") {
        return { error: "City not found in weather database", city: args.city };
    }
    ```
+   (Note: the shipped implementation already returns `{ error: ... }` JSON for any unknown city and validates args with `WeatherArgsSchema` — Atlantis exercises that path without code changes. The snippet above is only if you want a hardcoded demo.)
 2. Send: `"What's the weather in Atlantis?"`
 3. Watch the `[TOOL] Result:` log what did the tool return?
 4. Read the model's final response how does it communicate the error to the user?

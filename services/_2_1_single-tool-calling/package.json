@@ -1,21 +1,26 @@
 {
   "name": "single-tool-calling",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "A simple server for calling a single tool",
+  "main": "src/server.ts",
   "scripts": {
-    "start": "ts-node src/chat.ts"
+    "dev": "npx tsx src/server.ts",
+    "cli": "npx tsx src/cli.ts"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "dotenv": "^17.4.2",
-    "openai": "^6.43.0"
+    "dotenv": "^16.6.1",
+    "express": "^5.2.1",
+    "groq-sdk": "^1.6.0",
+    "tiktoken": "^1.0.22",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@types/node": "^25.9.3",
-    "ts-node": "^10.9.2",
-    "typescript": "^6.0.3"
+    "@types/express": "^5.0.6",
+    "@types/node": "^24.12.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
   }
 }
