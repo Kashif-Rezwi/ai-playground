@@ -54,7 +54,7 @@ const chatService = {
             // The decision joins history before its result; tool_call_id must match exactly
             conversationHistory.push(assistantMessage);
             const toolResult = executeTool(toolName, toolArgs);
-            console.log(`[TOOL] ${toolName}(${toolArgs}) → ${toolResult}`);
+            console.log(`\n[TOOL] ${toolName}(${toolArgs}) → ${toolResult}`);
             conversationHistory.push({ role: "tool", tool_call_id: toolCall.id, content: toolResult });
 
             toolTrace = { name: toolName, arguments: toolArgs, result: toolResult };
