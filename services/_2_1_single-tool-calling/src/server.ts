@@ -1,5 +1,7 @@
 import express from "express";
 import dotenv from "dotenv";
+import healthRouter from "./routes/health.route";
+import chatRouter from "./routes/chat.route";
 dotenv.config({ path: "../../.env" });
 
 const app = express();
@@ -9,9 +11,8 @@ const port = process.env.PORT || 3001;
 app.use(express.json());
 
 // Health check endpoint
-app.get("/api/health", (req, res) => {
-    res.status(200).json({ status: "ok", message: "Single tool calling server is healthy" });
-});
+app.use("/api/health", healthRouter);
+app.use("/api/chat", chatRouter);
 
 // Start the server
 app.listen(port, () => {

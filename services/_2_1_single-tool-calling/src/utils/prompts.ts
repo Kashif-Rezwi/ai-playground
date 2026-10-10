@@ -1,0 +1,1 @@
+export const SYSTEM_PROMPT = `You are a helpful assistant. Keep all responses brief and concise, limited to 2-5 sentences maximum.`
