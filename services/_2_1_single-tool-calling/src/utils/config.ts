@@ -6,13 +6,16 @@ const CONFIG = {
     LLM_API_KEY: process.env.LLM_API_KEY || "",
 
     // LLM Configuration
-    MODEL: "openai/gpt-oss-20b",
-    MAX_TOKENS: 6000, // due to reasoning model max tokens needs to be set to 6000.
+    MODEL: "openai/gpt-oss-20b", // it is a reasoning model.
+    MAX_TOKENS: 6000, // reasoning models token consumption is high, so a higher limit is needed.
     TEMPERATURE: 0.2,
     TOP_P: 1,
 
-    // Retry Configuration
-    MAX_RETRIES: 2,
+    // Tool Configuration ("auto" is the correct default for single-tool phase; "required" is for testing)
+    TOOL_CHOICE: "auto" as "auto" | "required" | "none",
+
+    // Safety cap on model→tool→model iterations per generateText call (single-tool phase expects 1)
+    MAX_TOOL_ITERATIONS: 5,
 };
 
 export default CONFIG;

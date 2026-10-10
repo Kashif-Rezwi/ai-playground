@@ -26,7 +26,9 @@ export interface ToolTrace {
 export interface GenerateChatResponse {
     messages: Message[];
     tokenCount: number;
-    tool: ToolTrace | null;
+    tool: ToolTrace | null; // last tool call trace
+    tools: ToolTrace[];
+    iterations: number; // model→tool iterations
     finishReason: string | null;
     totalLatencyMs: number;
 }

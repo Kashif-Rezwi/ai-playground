@@ -17,14 +17,18 @@ const chatService = {
 
         let inputTokens = 0;
         let outputTokens = 0;
-        let toolTrace: ToolTrace | null = null;
+        const toolTraces: ToolTrace[] = [];
+        let iterations = 0;
 
-        // The tool loop (official pattern): call → if tool_calls, execute → feed result back → call again
+        // The tool loop (official pattern): 
+        // call → if tool_calls, execute → feed result back → call again.
+        // Single-tool phase expects exactly 1 iteration
         while (true) {
             const rawResponse = await groqClient.chat.completions.create({
                 model: CONFIG.MODEL,
                 messages: conversationHistory,
-                tools: TOOLS, // tool_choice defaults to "auto" (the model decides)
+                tools: TOOLS,
+                tool_choice: CONFIG.TOOL_CHOICE,
                 max_tokens: maxTokens,
                 temperature,
                 top_p: topP,
@@ -38,11 +42,30 @@ const chatService = {
             // Branch on finish_reason, never on content (content is null on tool calls)
             if (rawResponse.choices[0].finish_reason !== "tool_calls" || !assistantMessage.tool_calls?.length) {
                 conversationHistory.push({ role: "assistant", content: assistantMessage.content ?? "" });
+                const lastTool = toolTraces.length > 0 ? toolTraces[toolTraces.length - 1] : null;
                 return {
                     messages: conversationHistory,
                     tokenCount: inputTokens + outputTokens, // a tool call costs 2 API calls minimum
-                    tool: toolTrace,
+                    tool: lastTool,
+                    tools: toolTraces,
+                    iterations,
                     finishReason: rawResponse.choices[0].finish_reason,
+                    totalLatencyMs: Date.now() - startedAt,
+                };
+            }
+
+            iterations += 1;
+            if (iterations > CONFIG.MAX_TOOL_ITERATIONS) {
+                const note = `Tool iteration limit (${CONFIG.MAX_TOOL_ITERATIONS}) reached — stopping to avoid an infinite loop.`;
+                console.warn(note);
+                conversationHistory.push({ role: "assistant", content: note });
+                return {
+                    messages: conversationHistory,
+                    tokenCount: inputTokens + outputTokens,
+                    tool: toolTraces.length > 0 ? toolTraces[toolTraces.length - 1] : null,
+                    tools: toolTraces,
+                    iterations,
+                    finishReason: "length",
                     totalLatencyMs: Date.now() - startedAt,
                 };
             }
@@ -54,10 +77,9 @@ const chatService = {
             // The decision joins history before its result; tool_call_id must match exactly
             conversationHistory.push(assistantMessage);
             const toolResult = executeTool(toolName, toolArgs);
-            console.log(`\n[TOOL] ${toolName}(${toolArgs}) → ${toolResult}`);
             conversationHistory.push({ role: "tool", tool_call_id: toolCall.id, content: toolResult });
 
-            toolTrace = { name: toolName, arguments: toolArgs, result: toolResult };
+            toolTraces.push({ name: toolName, arguments: toolArgs, result: toolResult });
         }
     },
 
