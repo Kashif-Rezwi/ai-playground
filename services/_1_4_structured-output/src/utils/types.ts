@@ -1,0 +1,52 @@
+import { CodeReview } from "./schema";
+
+// The three structured-output approaches (doc §Three Approaches)
+export type ReviewMode = "prompt" | "json" | "schema";
+
+// POST /api/chat/generate request body
+export interface ReviewRequest {
+    code: string;
+    mode?: ReviewMode; // defaults to "prompt"
+}
+
+// Per-run observability stats
+export interface RunStats {
+    approach: ReviewMode;
+    retries: number;
+    inputTokens: number;
+    outputTokens: number;
+    totalLatencyMs: number;
+}
+
+// POST /api/chat/generate response body
+export interface ReviewResult {
+    review: CodeReview;
+    stats: RunStats;
+}
+
+// Chat message shape for the Groq API
+export interface Message {
+    role: "system" | "user" | "assistant";
+    content: string;
+}
+
+// Result of validating the model's response against JSON syntax and the Zod schema.
+export type ValidationOutcome =
+    | { ok: true; data: CodeReview }
+    | { ok: false; feedback: string };
+
+// Available API-level response_format knobs:
+// - json_object: valid JSON syntax guaranteed, shape NOT
+// - json_schema: syntax AND shape guaranteed (constrained decoding)
+export type ResponseFormat =
+    | { type: "json_object" }
+    | {
+          type: "json_schema";
+          json_schema: { name: string; strict: boolean; schema: Record<string, unknown> };
+      };
+
+// The per-approach parameters: system prompt + optional API-level enforcement knobs
+export interface ApproachParams {
+    systemPrompt: string;
+    responseFormat?: ResponseFormat;
+}

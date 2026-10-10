@@ -94,8 +94,8 @@ The most robust approach. A **JSON Schema** (or a Zod schema converted into JSON
 
 **Tradeoffs:**
 - Guarantees both valid JSON and correct schema shape
-- Some schema features are not supported (recursive schemas, certain `anyOf` patterns)
-- Slightly higher latency due to constrained decoding
+- Some schema features are not supported — measured on Groq: deep nesting (3+ levels) and recursive `$ref` are rejected, while `anyOf` is accepted
+- Latency impact is provider-dependent — on Groq's LPU, schema-enforced mode measured *faster* than JSON mode (constrained-decoding overhead was negligible)
 - Not all providers support it equally, check the provider's docs
 
 **When to use it:** Always, in production. This is the gold standard.
@@ -154,7 +154,7 @@ In TypeScript projects, schemas are typically defined using **Zod**, then conver
 The flow is:
 
 ```
-Zod Schema → JSON Schema (via zod-to-json-schema) → API call → JSON response → Zod parse → typed object
+Zod Schema → JSON Schema (Zod v4 native z.toJSONSchema()) → API call → JSON response → Zod parse → typed object
 ```
 
 The Zod `.parse()` step at the end is critical, it validates that the API actually returned what is asked for, and gives a fully typed TypeScript object. Even with constrained decoding, always validate.
@@ -379,7 +379,7 @@ Once the app is working, run each of these deliberately. Each one is designed to
 - Does the provider reject the recursive `$ref` at the API level, or does it fail silently?
 - What error message is returned when a schema feature is unsupported?
 
-**Expected insight:** Providers implement JSON Schema support selectively. Recursive schemas and certain `anyOf` patterns are the most commonly unsupported features. When a schema fails, flatten it, use an `enum` or `string` instead of a recursive type. Know your provider's limits before designing complex schemas.
+**Expected insight:** Providers implement JSON Schema support selectively. Measured on Groq: deep nesting (3 levels) and recursive `$ref` schemas were rejected (`json_validate_failed`), while `anyOf` unions were accepted and conformed. When a schema fails, flatten it, use an `enum` or `string` instead of a recursive type. Know your provider's limits before designing complex schemas.
 
 ---
 
@@ -418,7 +418,7 @@ Once the app is working, run each of these deliberately. Each one is designed to
 - How much does a single retry add to total latency (one extra round-trip to the API)?
 - Do the output token counts differ across approaches for the same code input?
 
-**Expected insight:** Schema-enforced mode adds a small constant overhead from constrained decoding, but this is typically 50–150ms, which is negligible compared to the cost of a retry. One retry doubles the total latency. This is why a well-designed schema and prompt that avoids validation failures is worth the upfront investment.
+**Expected insight:** The latency impact of schema enforcement is provider-dependent. Measured on Groq (LPU): schema-enforced mode averaged 1461ms vs 5765ms for JSON mode over 5 runs — *faster*, not slower, because constrained-decoding overhead is negligible on LPUs and the schema-mode prompt is shorter. What IS universal: a single retry cost ~2.7× a clean run (4270ms vs ~1600ms measured). A well-designed schema and prompt that avoids validation failures is always worth the upfront investment.
 
 ---
 
@@ -428,9 +428,9 @@ Once the app is working, run each of these deliberately. Each one is designed to
 - JSON mode is a syntax guarantee, not a schema guarantee, `{ "foo": "bar" }` is valid JSON mode output even when `{ "name": "...", "issues": [...] }` was expected. Always validate with Zod regardless of which approach is used (Common Mistake 1)
 - `.safeParse()` is the only acceptable pattern in production, `.parse()` throws and can crash the process. Always check `result.success` before accessing `result.data` (Experiment 2)
 - The retry-with-correction pattern works, but retries are expensive, each one adds a full round-trip. Fix the schema and prompt first; treat retries as a last-resort safety net, not a primary strategy (Experiment 3)
-- Providers implement JSON Schema selectively, recursive schemas, certain `anyOf` patterns, and deep `$ref` nesting are commonly unsupported. Design schemas flat and test provider limits before shipping (Experiment 4)
+- Providers implement JSON Schema selectively. Measured on Groq: deep nesting and recursive `$ref` are rejected, while `anyOf` works. Design schemas flat and test provider limits before shipping (Experiment 4)
 - Streaming and structured output are fundamentally incompatible, partial JSON is unparseable. Buffer the full stream first, then parse once at the end. Streaming structured output is an optimization, not a starting point (Experiment 5)
-- Schema-enforced mode adds a small constant latency overhead from constrained decoding, this is negligible compared to the latency of a single retry. A well-designed schema that avoids retries is always faster in aggregate (Experiment 6)
+- Schema-enforced latency impact is provider-dependent (measured *faster* than JSON mode on Groq's LPU). What is universal: a single retry costs far more than any enforcement overhead. A well-designed schema that avoids retries is always faster in aggregate (Experiment 6)
 - Structured output is the silent foundation of every agentic system where tool calls, ReAct loops, and multi-agent delegation all depend on it. Mastering it here makes every phase from 2 onwards significantly easier to debug
 
 ---
