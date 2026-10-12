@@ -1,11 +1,9 @@
-import express, { Request, Response } from "express";
+import express from "express";
+import chatController from "../controllers/chat.controller";
 
 const chatRouter = express.Router();
 
 // Chat endpoint
-chatRouter.post("/generate", async (req: Request, res: Response) => {
-    // Placeholder for chat generation logic
-    res.status(200).json({ message: "Chat generation endpoint is working" });
-});
+chatRouter.post("/generate", chatController.generateText);
 
 export default chatRouter;
