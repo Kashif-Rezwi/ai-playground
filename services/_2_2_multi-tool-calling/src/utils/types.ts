@@ -1,4 +1,4 @@
-import type { ChatCompletionMessageParam } from "groq-sdk/resources/chat/completions";
+import type { ChatCompletionMessageParam, ChatCompletionTool } from "groq-sdk/resources/chat/completions";
 
 // Message Parameters we send to the API (role + content)
 export type Message = ChatCompletionMessageParam;
@@ -17,3 +17,6 @@ export interface GenerateChatResponse {
     messages: Message[];
     tokenCount: number;
 }
+
+// Tool Definition we send to the API (name + description + parameters)
+export type ToolDefinition = ChatCompletionTool;

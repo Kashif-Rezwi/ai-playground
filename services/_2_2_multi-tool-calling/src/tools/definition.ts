@@ -1,4 +1,4 @@
-import { ToolDefinition } from "../types";
+import { ToolDefinition } from "../utils/types";
 
 export const TOOLS: ToolDefinition[] = [
     {
