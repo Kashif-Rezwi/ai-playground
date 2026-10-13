@@ -4,7 +4,7 @@ import { GenerateChatRequest } from "../utils/types";
 import chatService from "../services/chat.service";
 
 const chatController = {
-    generateText: async (req: Request, res: Response): Promise<Response> => {
+    generate: async (req: Request, res: Response): Promise<Response> => {
         const {
             systemPrompt = "",
             userPrompt = "",
