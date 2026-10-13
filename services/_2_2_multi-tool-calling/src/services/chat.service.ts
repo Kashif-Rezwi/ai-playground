@@ -8,7 +8,7 @@ const chatService = {
     async generateText({ systemPrompt, userPrompt, temperature, maxTokens, topP }: GenerateChatRequest): Promise<GenerateChatResponse> {
         // Initialize conversation history if empty, then append the user prompt
         if (conversationHistory.length === 0) {
-            conversationHistory.push({ role: "system", content: systemPrompt });
+            conversationHistory.push({ role: "system", content: systemPrompt ?? "" });
         }
 
         // Append the user prompt to the conversation history

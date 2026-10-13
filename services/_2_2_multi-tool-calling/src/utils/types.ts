@@ -1,8 +1,7 @@
+import type { ChatCompletionMessageParam } from "groq-sdk/resources/chat/completions";
+
 // Message Parameters we send to the API (role + content)
-export interface Message {
-    role: "user" | "assistant" | "system";
-    content: string;
-}
+export type Message = ChatCompletionMessageParam;
 
 // POST /api/chat/generate request body
 export interface GenerateChatRequest {
