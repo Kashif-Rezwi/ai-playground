@@ -3,6 +3,16 @@ import type { ChatCompletionMessageParam, ChatCompletionTool } from "groq-sdk/re
 // Message Parameters we send to the API (role + content)
 export type Message = ChatCompletionMessageParam;
 
+// Tool Definition we send to the API (name + description + parameters)
+export type ToolDefinition = ChatCompletionTool;
+
+// The tool call trace for observability and debugging. This is returned in the API response.
+export interface ToolTrace {
+    name: string;
+    arguments: string;
+    result: string;
+}
+
 // POST /api/chat/generate request body
 export interface GenerateChatRequest {
     systemPrompt?: string;
@@ -16,7 +26,9 @@ export interface GenerateChatRequest {
 export interface GenerateChatResponse {
     messages: Message[];
     tokenCount: number;
+    tool: ToolTrace | null; // last tool call trace
+    tools: ToolTrace[]; // all tool call traces (parallel calls appear together)
+    iterations: number; // model→tool iterations (API calls beyond the first)
+    finishReason: string | null;
+    totalLatencyMs: number;
 }
-
-// Tool Definition we send to the API (name + description + parameters)
-export type ToolDefinition = ChatCompletionTool;

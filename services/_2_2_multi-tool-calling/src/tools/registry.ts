@@ -1,32 +1,47 @@
-import { getWeather, WeatherArgs } from "./weather";
-import { getTime, TimeArgs } from "./time";
-import { convertCurrency, CurrencyArgs } from "./currency";
+import { getWeather, WeatherArgsSchema } from "./weather";
+import { getTime, TimeArgsSchema } from "./time";
+import { convertCurrency, CurrencyArgsSchema } from "./currency";
+import { ToolDefinition } from "../utils/types";
+import { TOOLS as TOOL_DEFINITIONS } from "./definition";
 
-// The central dispatcher that routes a tool call to its implementation
+// The tools array passed to the API — the model's view, derived from definition.ts
+export const TOOLS: ToolDefinition[] = TOOL_DEFINITIONS;
+
+// Registry mapping tool names to their respective Zod schema and execution function
+const toolRegistry = {
+    get_weather: { schema: WeatherArgsSchema, execute: getWeather },
+    get_time: { schema: TimeArgsSchema, execute: getTime },
+    convert_currency: { schema: CurrencyArgsSchema, execute: convertCurrency },
+};
+
+// The central dispatcher that routes a tool call to its implementation.
 export function executeTool(toolName: string, toolArgsString: string): string {
-    let args: any;
-
-    // Parse the JSON string into an object. If this fails, return an error.
+    // Layer 1 — is it valid JSON?
+    let parsed: unknown;
     try {
-        args = JSON.parse(toolArgsString);
-    } catch (e) {
-        return JSON.stringify({ error: "Failed to parse tool arguments as JSON." });
+        parsed = JSON.parse(toolArgsString);
+    } catch {
+        return JSON.stringify({ error: "Failed to parse tool arguments. Ensure they are valid JSON." });
     }
 
-    // Validate the arguments based on the tool's expected schema. If validation fails, return an error.
-    try {
-        switch (toolName) {
-            case "get_weather":
-                return getWeather(args as WeatherArgs);
-            case "get_time":
-                return getTime(args as TimeArgs);
-            case "convert_currency":
-                return convertCurrency(args as CurrencyArgs);
-            default:
-                return JSON.stringify({ error: `Tool '${toolName}' is not implemented.` });
-        }
-    } catch (e) {
-        // Fallback catch-all in case a tool throws instead of returning an error string
-        return JSON.stringify({ error: `An unexpected error occurred while executing ${toolName}.` });
+    // Look up the tool in the registry
+    const tool = toolRegistry[toolName as keyof typeof toolRegistry];
+    if (!tool) {
+        return JSON.stringify({ error: `Tool '${toolName}' is not implemented.` });
     }
+
+    // Layer 2 — does it match the tool's schema?
+    const result = tool.schema.safeParse(parsed);
+    if (!result.success) {
+        return JSON.stringify({ error: `Invalid tool arguments: ${formatIssues(result.error.issues)}` });
+    }
+
+    // Execute the matched tool with validated data
+    const toolExecutionFn = tool.execute as (data: any) => string;
+    return toolExecutionFn(result.data);
+}
+
+// Human-readable Zod issue list: "city: Required; unit: Invalid value"
+function formatIssues(issues: { path: PropertyKey[]; message: string }[]): string {
+    return issues.map((i) => `${i.path.map(String).join(".") || "(root)"}: ${i.message}`).join("; ");
 }
