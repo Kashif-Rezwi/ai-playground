@@ -3,7 +3,8 @@ import chatController from "../controllers/chat.controller";
 
 const chatRouter = express.Router();
 
-// Chat endpoint
 chatRouter.post("/generate", chatController.generate);
+chatRouter.get("/history", chatController.getHistory);
+chatRouter.delete("/history", chatController.clearHistory);
 
 export default chatRouter;
