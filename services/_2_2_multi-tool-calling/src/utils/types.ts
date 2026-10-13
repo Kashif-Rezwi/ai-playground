@@ -28,7 +28,6 @@ export interface GenerateChatResponse {
     tokenCount: number;
     tool: ToolTrace | null; // last tool call trace
     tools: ToolTrace[]; // all tool call traces (parallel calls appear together)
-    iterations: number; // model→tool iterations (API calls beyond the first)
     finishReason: string | null;
     totalLatencyMs: number;
 }

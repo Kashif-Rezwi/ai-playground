@@ -1,11 +1,14 @@
 import CONFIG from "../utils/config";
-import { GenerateChatRequest, GenerateChatResponse, Message } from "../utils/types";
+import { GenerateChatRequest, GenerateChatResponse, Message, ToolTrace } from "../utils/types";
+import { executeTool, TOOLS } from "../tools/registry";
 import groqClient from "./llm.service";
 
-const conversationHistory: Message[] = [];
+let conversationHistory: Message[] = [];
 
 const chatService = {
     async generateText({ systemPrompt, userPrompt, temperature, maxTokens, topP }: GenerateChatRequest): Promise<GenerateChatResponse> {
+        const startedAt = Date.now();
+
         // Initialize conversation history if empty, then append the user prompt
         if (conversationHistory.length === 0) {
             conversationHistory.push({ role: "system", content: systemPrompt ?? "" });
@@ -14,26 +17,72 @@ const chatService = {
         // Append the user prompt to the conversation history
         conversationHistory.push({ role: "user", content: userPrompt });
 
-        // Call the LLM API
-        const rawResponse = await groqClient.chat.completions.create({
-            model: CONFIG.MODEL,
-            messages: conversationHistory,
-            max_tokens: maxTokens,
-            temperature,
-            top_p: topP
-        })
+        // Initialize counters and traces
+        let inputTokens = 0;
+        let outputTokens = 0;
+        const toolTraces: ToolTrace[] = [];
 
-        // Extract the assistant's message and append it to the conversation history
-        const assistantMessage = rawResponse.choices[0].message.content as string;
-        conversationHistory.push({ role: "assistant", content: assistantMessage });
+        // If tool_calls, execute ALL of them → feed results back → call again.
+        // Parallel tool calls arrive as one assistant message with multiple tool_calls entries.
+        while (true) {
+            const rawResponse = await groqClient.chat.completions.create({
+                model: CONFIG.MODEL,
+                messages: conversationHistory,
+                tools: TOOLS,
+                tool_choice: CONFIG.TOOL_CHOICE,
+                max_tokens: maxTokens,
+                temperature,
+                top_p: topP,
+            });
 
-        // Calculate the total token count for the conversation history
-        const totalTokenCount = rawResponse.usage?.total_tokens ?? 0;
+            inputTokens += rawResponse.usage?.prompt_tokens ?? 0;
+            outputTokens += rawResponse.usage?.completion_tokens ?? 0;
 
-        return {
-            messages: conversationHistory,
-            tokenCount: totalTokenCount
-        };
+            const assistantMessage = rawResponse.choices[0].message;
+
+            // Branch on finish_reason, never on content (content is null on tool calls)
+            if (rawResponse.choices[0].finish_reason !== "tool_calls" || !assistantMessage.tool_calls?.length) {
+                conversationHistory.push({ role: "assistant", content: assistantMessage.content ?? "" });
+                
+                // Return the last tool trace if any, otherwise null
+                const lastTool = toolTraces.length > 0 ? toolTraces[toolTraces.length - 1] : null;
+                return {
+                    messages: conversationHistory,
+                    tokenCount: inputTokens + outputTokens, // a tool turn costs 2+ API calls
+                    tool: lastTool,
+                    tools: toolTraces,
+                    finishReason: rawResponse.choices[0].finish_reason,
+                    totalLatencyMs: Date.now() - startedAt,
+                };
+            }
+
+            // Append the assistant message to history, even if it has no content (tool calls only)
+            conversationHistory.push(assistantMessage);
+
+            // Iterate over EVERY tool call — parallel or sequential.
+            for (const toolCall of assistantMessage.tool_calls) {
+                if (toolCall.type !== "function") continue;
+
+                const toolName = toolCall.function.name;
+                const toolArgs = toolCall.function.arguments;
+
+                console.log(`[TOOL] Executing: ${toolName}(${toolArgs})`);
+
+                let toolResult: string;
+                try {
+                    toolResult = executeTool(toolName, toolArgs);
+                } catch {
+                    // If the tool execution throws an unexpected error, we catch it and return a generic error message.
+                    toolResult = JSON.stringify({ error: "Tool execution failed unexpectedly." });
+                }
+         
+                console.log(`[TOOL] Result: ${toolResult}`);
+
+                conversationHistory.push({ role: "tool", tool_call_id: toolCall.id, content: toolResult });
+
+                toolTraces.push({ name: toolName, arguments: toolArgs, result: toolResult });
+            }
+        }
     }
 };
 
