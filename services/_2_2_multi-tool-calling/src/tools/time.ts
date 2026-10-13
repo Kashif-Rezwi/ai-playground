@@ -1,7 +1,13 @@
-export interface TimeArgs {
-    city: string;
-}
+import { z } from "zod";
 
+// The arguments the model will try to provide (validated with Zod before execution)
+export const TimeArgsSchema = z.object({
+    city: z.string().min(1, "city is required"),
+});
+
+export type TimeArgs = z.infer<typeof TimeArgsSchema>;
+
+// A simple mock database of cities and their corresponding timezones
 const MOCK_TIMEZONE_DB: Record<string, string> = {
     'london': 'Europe/London',
     'paris': 'Europe/Paris',
@@ -15,6 +21,7 @@ const MOCK_TIMEZONE_DB: Record<string, string> = {
     'delhi': 'Asia/Kolkata',
 };
 
+// Mock implementation
 export function getTime(args: TimeArgs): string {
     try {
         const { city } = args;
