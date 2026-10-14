@@ -1,12 +1,14 @@
 import dotenv from "dotenv";
 import express from "express";
-dotenv.config({ path: "../../.env" });
+import path from "path";
+
+dotenv.config({ path: path.resolve(__dirname, "../../../.env") });
 import healthRouter from "./routes/health.route";
 import chatRouter from "./routes/chat.route";
 
 
 const app = express();
-const port = process.env.PORT || 3001;
+const port = process.env.PORT || 3102;
 
 // middleware
 app.use(express.json());
