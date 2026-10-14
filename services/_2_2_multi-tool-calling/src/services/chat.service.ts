@@ -144,7 +144,7 @@ const chatService = {
     },
 
     async getConversationHistory(): Promise<Message[]> {
-        return conversationHistory;
+        return [...conversationHistory];
     },
 
     async clearHistory(): Promise<void> {

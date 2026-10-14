@@ -22,7 +22,7 @@ export const timeToolDefinition: ToolDefinition = {
 
 // The arguments the model will try to provide (validated with Zod before execution)
 export const TimeArgsSchema = z.object({
-    city: z.string().min(1, "city is required"),
+    city: z.string().trim().min(1, "city is required"),
 });
 
 export type TimeArgs = z.infer<typeof TimeArgsSchema>;

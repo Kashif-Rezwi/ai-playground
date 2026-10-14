@@ -5,7 +5,7 @@ export const currencyToolDefinition: ToolDefinition = {
     type: "function",
     function: {
         name: "convert_currency",
-        description: "Convert a specific amount of money from one currency to another using current exchange rates.",
+        description: "Convert a specific amount of money from one currency to another using mock exchange rates.",
         parameters: {
             type: "object",
             properties: {
@@ -31,8 +31,8 @@ export const currencyToolDefinition: ToolDefinition = {
 // The arguments the model will try to provide (validated with Zod before execution)
 export const CurrencyArgsSchema = z.object({
     amount: z.number().min(0, "amount must be non-negative"),
-    from_currency: z.string().min(1, "from_currency is required"),
-    to_currency: z.string().min(1, "to_currency is required"),
+    from_currency: z.string().trim().min(1, "from_currency is required"),
+    to_currency: z.string().trim().min(1, "to_currency is required"),
 });
 
 export type CurrencyArgs = z.infer<typeof CurrencyArgsSchema>;

@@ -27,7 +27,7 @@ export const weatherToolDefinition: ToolDefinition = {
 
 // The arguments the model will try to provide (validated with Zod before execution)
 export const WeatherArgsSchema = z.object({
-    city: z.string().min(1, "city is required"),
+    city: z.string().trim().min(1, "city is required"),
     unit: z.enum(["celsius", "fahrenheit"]).optional(),
 });
 
