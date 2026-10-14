@@ -14,7 +14,7 @@ First: the model now has **multiple tools** to choose from. For every user messa
 
 Second: the model can call **multiple tools in a single response**. Instead of one `tool_calls` entry, a single assistant message may contain two, three, or more calls issued simultaneously. These are **parallel tool calls**, the model determined that all the information it needs can be fetched independently and in one shot, without waiting for intermediate results.
 
-The runner built in Phase 2.1 hardcoded execution for only the first tool call (`message.tool_calls[0]`). Phase 2.2 replaces this with a proper `for` loop over `assistantMsg.tool_calls`, executing all calls returned by the model. The difference between a working parallel implementation and a broken one comes down to getting the history append sequence right.
+The runner built in Phase 2.1 hardcoded execution for only the first tool call (`message.tool_calls[0]`). Phase 2.2 replaces this with a proper loop over `assistantMsg.tool_calls`, executing all calls returned by the model. The difference between a working parallel implementation and a broken one comes down to getting the history append sequence right.
 
 ---
 
@@ -99,7 +99,7 @@ conversationHistory.push({
 // This loop is sequential in execution (one at a time),
 // but the model treats all the results as if they arrived in parallel.
 for (const toolCall of assistantMsg.tool_calls) {
-    const result = executeTool(toolCall);
+    const result = executeTool(toolCall.function.name, toolCall.function.arguments);
     conversationHistory.push({
         role: "tool",
         tool_call_id: toolCall.id,  // must match the call that requested it
@@ -146,7 +146,7 @@ For Phase 2.2, three tools is the right number: enough to demonstrate multi-tool
 
 When two tools are called in parallel and one fails, the application has a decision: fail the entire turn, or return what it has. The correct production behavior is to **return a structured error for the failed tool and let the model decide how to handle it**.
 
-The model is surprisingly good at this. Given one successful result and one error result, it will typically compose a response that answers the part it can and acknowledges the failure for the part it can't. It behaves like a human who got partial information and uses what's available.
+The model may compose a response that answers the part it can and acknowledges the failure for the part it cannot. Treat this as a provider behavior to observe, not a guarantee of the application.
 
 The key is that both `tool` messages must still be appended. A pending `tool_call_id` in the assistant message that never gets a corresponding `tool` result leaves the history in an invalid state and causes the second API call to fail.
 
@@ -154,7 +154,7 @@ The key is that both `tool` messages must still be appended. A pending `tool_cal
 // Even on failure, always append a tool message for every tool_call in the loop
 const result = (() => {
     try {
-        return executeTool(toolCall);
+        return executeTool(toolCall.function.name, toolCall.function.arguments);
     } catch {
         return JSON.stringify({ error: "Tool execution failed unexpectedly" });
     }
@@ -167,7 +167,7 @@ conversationHistory.push({
 });
 ```
 
-This is a strengthening of the Phase 2.1 rule (never throw inside a tool). In Phase 2.2, the consequence of a throw is worse: it leaves multiple unresolved `tool_call_id` references in the assistant message, making the history unrecoverable without a full rollback.
+This strengthens the Phase 2.1 rule (never throw inside a tool). The application catches unexpected execution errors and still emits a result, so every `tool_call_id` remains paired. Malformed provider call types are also converted into structured error results rather than being silently skipped.
 
 ---
 
@@ -193,25 +193,35 @@ These three tools create a natural surface for all the scenarios this phase cove
 ## File Structure
 
 ```
-services/multi-tool-calling/
+services/_2_2_multi-tool-calling/
 ├── package.json
 ├── tsconfig.json
 ├── docs/
 │   └── multi-tool-calling.md
 └── src/
-    ├── chat.ts             ← REPL loop, entry point (minimal — same pattern as 2.1)
-    ├── config.ts           ← MODEL, MAX_RESPONSE_TOKENS, SYSTEM_PROMPT
-    ├── types.ts            ← Same four-role type union as 2.1 (no changes needed)
-    ├── runner.ts           ← Extended loop: iterates full tool_calls array
+    ├── cli.ts              ← REPL loop and CLI entry point
+    ├── server.ts           ← Express server entry point
+    ├── controllers/
+    │   └── chat.controller.ts
+    ├── routes/
+    │   ├── chat.route.ts
+    │   └── health.route.ts
+    ├── services/
+    │   ├── chat.service.ts ← Extended loop: iterates full tool_calls array
+    │   └── llm.service.ts
+    ├── utils/
+    │   ├── config.ts
+    │   ├── prompts.ts
+    │   ├── types.ts
+    │   └── tool-loop.ts
     └── tools/
-        ├── index.ts        ← Dispatcher: routes name → function, wraps errors
-        ├── definitions.ts  ← Three tool schemas (get_weather, get_time, convert_currency)
-        ├── weather.ts      ← Ported from Phase 2.1
-        ├── time.ts         ← New: mock local time by city
-        └── currency.ts     ← New: mock exchange rates
+        ├── registry.ts     ← Dispatcher: routes name → function, validates arguments
+        ├── weather.ts      ← Tool definition and mock weather implementation
+        ├── time.ts         ← Tool definition and mock local time by city
+        └── currency.ts     ← Tool definition and mock exchange rates
 ```
 
-The runner change from Phase 2.1 to Phase 2.2 is minimal in code but significant in behavior. We replace the hardcoded `tool_calls[0]` with a `for` loop over `tool_calls`, wrapping the execution in a try/catch to ensure every tool call always produces a corresponding result message even on failure. Everything else is additive: two new tool files, two new entries in `definitions.ts`, two new `case` branches in the dispatcher.
+The chat service change from Phase 2.1 to Phase 2.2 is minimal in code but significant in behavior. It replaces the hardcoded `tool_calls[0]` with a loop over every call, and the `tool-loop.ts` helper ensures every call receives a corresponding result message even on failure. The server and CLI are two entry points over the same service; history is process-local and intended for a single-user learning session.
 
 This is intentional. Phase 2.2 is an extension of Phase 2.1, not a rewrite. The architecture should feel like adding capabilities, not restructuring.
 
@@ -251,7 +261,7 @@ Once the app is working, run each of these deliberately. Each one surfaces a spe
 2. Send: `"Is it raining in Lisbon right now?"` — note which tool runs
 3. Send: `"I need to convert 250 GBP to JPY"` — note which tool runs
 4. Send: `"What's the best season to visit Kyoto?"` — does any tool run?
-5. For each tool-call turn, type `history` and count the messages added
+5. For each tool-call turn, type `/history` and count the messages added
 
 **What to observe:**
 - Does the model call the correct single tool for each of steps 1–3?
@@ -259,7 +269,7 @@ Once the app is working, run each of these deliberately. Each one surfaces a spe
 - How many messages are added to history per tool-call turn vs per direct-answer turn?
 - Do any of the tool calls produce unexpected tool selections e.g. `get_weather` being called for a time question?
 
-**Expected insight:** With well-written descriptions, the model consistently routes to the correct tool. The description boundary between `get_weather` and `get_time` matters most, both relate to a city, but one is about conditions and the other is about clock time. If routing errors appear, the tool descriptions are the first place to look, not the implementation.
+**Expected insight:** With well-written descriptions, the model should more often route to the correct tool. The description boundary between `get_weather` and `get_time` matters most, but routing is still provider-dependent. If routing errors appear, the tool descriptions are the first place to investigate.
 
 ---
 
@@ -270,7 +280,7 @@ Once the app is working, run each of these deliberately. Each one surfaces a spe
 
 **Steps:**
 1. Send: `"I'm flying to Tokyo tonight — what's the weather like and what time will it be when I land?"` — watch the logs
-2. After the response, type `history` and inspect the full array
+2. After the response, type `/history` and inspect the full array
 3. Count: how many messages were added this turn?
 4. Find the assistant message with `tool_calls`. How many entries does the array have?
 5. Find the two `tool` messages. What are their `tool_call_id` values? Do they match the entries in the assistant message?
@@ -278,11 +288,11 @@ Once the app is working, run each of these deliberately. Each one surfaces a spe
 
 **What to observe:**
 - Does the single prompt "weather and time" produce one assistant message with two `tool_calls` entries, or two separate assistant messages each with one?
-- After the parallel call, how many total messages are in history for this turn? (Answer: 5 — user + assistant-with-two-tool-calls + tool-result-1 + tool-result-2 + final-assistant)
+- After the parallel call, how many total messages are in history for this turn? (For one tool-call round, this is 5: user + assistant-with-two-tool-calls + two tool results + final assistant.)
 - Compare that to the single-tool turn. How many messages does that add? (Answer: 4)
 - Are the two `tool` messages appended in the same order as the `tool_calls` array? Does order matter?
 
-**Expected insight:** A parallel tool call produces one assistant message with multiple `tool_calls` entries, not multiple assistant messages. The loop executes them sequentially and appends a `tool` message for each, in order. The final count for a parallel turn is 5 messages added vs 4 for a single-tool turn. The extra message is the second tool result. Understanding this growth rate matters when building agents that make many calls in long sessions.
+**Expected insight:** When the provider emits a parallel batch, it produces one assistant message with multiple `tool_calls` entries. The loop executes them sequentially and appends a `tool` message for each, in order. Five messages is the count for one parallel round; additional model-to-tool rounds add more messages.
 
 ---
 
@@ -296,7 +306,7 @@ Once the app is working, run each of these deliberately. Each one surfaces a spe
 2. Send: `"Convert 100 USD to EUR, and also tell me the weather in Paris"` — parallel or sequential?
 3. Send: `"What's the weather like in the warmest European capital right now?"` — how many turns and calls does this take?
 4. Send: `"I have 500 USD. How many Euros can I get, and is the weather in Paris good for sightseeing with that budget?"` — observe carefully
-5. For steps 3 and 4, type `history` after each response and count the distinct assistant messages (each represents a model "turn")
+5. For steps 3 and 4, type `/history` after each response and count the distinct assistant messages (each represents a model "turn")
 
 **What to observe:**
 - Do steps 1 and 2 produce parallel calls (one assistant message with multiple `tool_calls`) or sequential calls (multiple assistant messages each with one)?
@@ -304,14 +314,14 @@ Once the app is working, run each of these deliberately. Each one surfaces a spe
 - Does step 4 produce a single parallel call, two sequential calls, or something else?
 - In any case where multiple turns happen, how many total API calls were made?
 
-**Expected insight:** The model parallelizes when targets are known and independent. "Weather in Berlin and time in Berlin" → parallel, both targets are explicit. "Warmest European capital" → sequential or direct answer because the target city isn't known upfront, as the model has to reason to a city before it can call a weather tool (or it just answers from training). This is the difference between retrieval (known target) and reasoning (unknown target that must be computed). Phase 4.1's ReAct pattern is built on exactly this distinction.
+**Expected insight:** The model may parallelize when targets are known and independent. "Warmest European capital" has no matching city-search tool, so the provider may answer directly, guess, or stop. This experiment demonstrates an observed routing pattern, not a guaranteed reasoning strategy.
 
 ---
 
 ### Experiment 4 — Inspecting Raw Parallel Tool Calls
 **Covers:** `tool_calls` array structure, `id` uniqueness, argument parsing per call
 
-**Setup:** Add a temporary `console.log(JSON.stringify(assistantMsg.tool_calls, null, 2))` in `runner.ts` after receiving the first API response, before the execution loop. Remove it after.
+**Setup:** Add a temporary `console.log(JSON.stringify(assistantMsg.tool_calls, null, 2))` in `services/chat.service.ts` after receiving the model response, before the execution loop. Remove it after.
 
 **Steps:**
 1. Send: `"What's the weather in London and what time is it there?"`
@@ -327,7 +337,7 @@ Once the app is working, run each of these deliberately. Each one surfaces a spe
 - When only one tool result is appended and the second API call is made, does it succeed, fail, or produce a partial response?
 - Does the API throw an error for the unresolved `tool_call_id`, or does the model just answer with partial information?
 
-**Expected insight:** The `id` values are generated by the model (e.g. `"call_abc123"`) and are unique per turn. They serve as the join key between `tool_calls` entries and `tool` result messages. Leaving a `tool_call_id` unresolved in history causes an API error on the next call, as the history structure is invalid. This is why the iteration loop must be unconditional: every entry in `tool_calls` must produce exactly one `tool` result message before the second call.
+**Expected insight:** The `id` values are generated by the model and serve as the join key between `tool_calls` entries and `tool` result messages. The application must produce exactly one result for every entry before the next model call, regardless of the provider's ID format.
 
 ---
 
@@ -346,7 +356,7 @@ Once the app is working, run each of these deliberately. Each one surfaces a spe
 2. Send: `"What's the weather in Tokyo and convert 100 USD to BLORP"`
 3. Watch both `[TOOL]` log lines — what does each return?
 4. Read the final response — how does the model handle one success and one failure?
-5. Type `history` — are there two `tool` messages? Is the `tool_call_id` for the failed call present?
+5. Type `/history` — are there two `tool` messages? Is the `tool_call_id` for the failed call present?
 6. Now instead of returning an error, throw from `convertCurrency()` and observe what happens to the runner
 
 **What to observe:**
@@ -355,7 +365,7 @@ Once the app is working, run each of these deliberately. Each one surfaces a spe
 - Is the conversation still usable after the partial failure, can a follow-up message be sent successfully?
 - When `throw` is used instead of returning error JSON, does the runner crash and is history left in a recoverable state?
 
-**Expected insight:** Returning structured error JSON keeps history intact. The model receives both results, sees one is an error, and composes a response that addresses what it can ("The weather in Tokyo is 22°C. I couldn't convert to BLORP, as that currency isn't recognized."). Throwing inside a tool corrupts the history because the `tool_call_id` for the throwing tool has an unresolved reference in the assistant message. The try/catch wrapper in the runner's iteration loop exists precisely for this: it guarantees every call_id gets a result message, even under failure.
+**Expected insight:** Returning structured error JSON keeps history intact. The model receives both results, sees one is an error, and composes a response that addresses what it can. The application also catches unexpected execution errors and converts them into a result, so every `tool_call_id` remains paired.
 
 ---
 
@@ -365,8 +375,8 @@ Once the app is working, run each of these deliberately. Each one surfaces a spe
 **Setup:** This experiment deliberately degrades description quality to observe routing errors.
 
 **Steps:**
-1. In `definitions.ts`, replace `get_weather`'s description with: `"Gets information about a city."`
-2. Replace `get_time`'s description with: `"Gets information about a city."`
+1. In `tools/weather.ts`, replace `get_weather`'s description with: `"Gets information about a city."`
+2. In `tools/time.ts`, replace `get_time`'s description with: `"Gets information about a city."`
 3. Restart and run these prompts, noting which tool is called each time:
    - `"What's the temperature in Madrid?"`
    - `"What time is it in Madrid?"`
@@ -413,11 +423,32 @@ Each tool schema consumes tokens on every API call, whether or not the tool is u
 
 - Multiple tools require descriptions that function as a routing table, each description must clearly delineate when to use that tool and not another. Overlapping descriptions produce inconsistent routing (Experiment 6)
 - Parallel tool calls produce one assistant message with multiple `tool_calls` entries. The iteration loop must complete fully before making the second API call, appending all results first is the only valid sequence (Experiments 2, 4)
-- Every `tool_call_id` in the assistant message must have a corresponding `tool` result message before the next API call. A broken loop on failure leaves unresolved IDs and corrupts history. The try/catch must be inside the loop, not around it (Experiment 5)
-- Parallel calls occur when targets are known and independent. Unknown targets (e.g. "warmest city") require sequential reasoning, the model must determine the target before it can call the retrieval tool. This distinction is the foundation of Phase 4's ReAct pattern (Experiment 3)
-- Returning structured error JSON from a failed tool keeps history intact and lets the model compose a partial response. Throwing corrupts the `tool_calls` / `tool` pairing and makes history unrecoverable without a full rollback (Experiment 5)
+- Every `tool_call_id` in the assistant message must have a corresponding `tool` result message before the next API call. The loop handles failures inside the batch so no call ID is left unresolved (Experiment 5)
+- Parallel calls are provider behavior observed when targets are known and independent. Unknown targets may produce a direct answer, a guess, or no tool call when the registry has no discovery tool (Experiment 3)
+- Returning structured error JSON from a failed tool keeps history intact and lets the model compose a partial response. Unexpected execution failures are also converted into results by the application (Experiment 5)
 - Tool definition schemas consume tokens on every API call regardless of whether the tool runs. In large registries, definition overhead becomes a real context budget line item (Concept section)
-- The runner's loop is the same as Phase 2.1, the difference is that it now actually iterates more than once. All Phase 2.2 complexity comes from correctly handling that iteration under multiple outcomes (all succeed, partial failure, all fail) (Experiments 2–5)
+- The chat service loop extends Phase 2.1 by handling multiple calls per assistant message and multiple model-to-tool rounds. All Phase 2.2 complexity comes from correctly handling those rounds under multiple outcomes (all succeed, partial failure, all fail) (Experiments 2–5)
+
+## Running the Service
+
+From the repository root, create `.env` from `.env.example` and set `LLM_API_KEY`. Then run either entry point:
+
+```bash
+npm install
+npm run cli --workspace multi-tool-calling
+npm run dev --workspace multi-tool-calling
+```
+
+The CLI commands are `/history`, `/clear`, and `/exit`. The server listens on port `3001` by default, or `PORT` when configured. Its routes are:
+
+```text
+GET    /api/health
+POST   /api/chat/generate
+GET    /api/chat/history
+DELETE /api/chat/history
+```
+
+`POST /api/chat/generate` requires a string `userPrompt`. Optional `temperature`, `maxTokens`, and `topP` values are validated at runtime. Conversation history is held in process memory and is shared by callers, so this service is intentionally a single-user learning example rather than a session-aware production API.
 
 ---
 
