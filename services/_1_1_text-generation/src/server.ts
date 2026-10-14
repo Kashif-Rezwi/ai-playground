@@ -1,11 +1,12 @@
 import dotenv from 'dotenv';
 import express from 'express';
 import { Groq } from 'groq-sdk';
+import path from 'path';
 
-dotenv.config({ path: '../../.env' });
+dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
 
 const app = express();
-const port = process.env.PORT || 3001;
+const port = process.env.PORT || 3101;
 const llmApiKey = process.env.LLM_API_KEY;
 
 if (!llmApiKey) {
