@@ -1,4 +1,24 @@
 import { z } from "zod";
+import { ToolDefinition } from "../utils/types";
+
+export const timeToolDefinition: ToolDefinition = {
+    type: "function",
+    function: {
+        name: "get_time",
+        description: "Get the current local time for a specific city. Use this ONLY when the user asks about the clock time, timezone, or what time it is. Do NOT use this to get weather.",
+        parameters: {
+            type: "object",
+            properties: {
+                city: {
+                    type: "string",
+                    description: "The name of the city, e.g. 'London', 'Tokyo'"
+                }
+            },
+            required: ["city"],
+            additionalProperties: false
+        }
+    }
+};
 
 // The arguments the model will try to provide (validated with Zod before execution)
 export const TimeArgsSchema = z.object({

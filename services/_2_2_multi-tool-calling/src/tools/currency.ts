@@ -1,4 +1,32 @@
 import { z } from "zod";
+import { ToolDefinition } from "../utils/types";
+
+export const currencyToolDefinition: ToolDefinition = {
+    type: "function",
+    function: {
+        name: "convert_currency",
+        description: "Convert a specific amount of money from one currency to another using current exchange rates.",
+        parameters: {
+            type: "object",
+            properties: {
+                amount: {
+                    type: "number",
+                    description: "The numerical amount of money to convert"
+                },
+                from_currency: {
+                    type: "string",
+                    description: "The 3-letter currency code to convert from, e.g. 'USD', 'GBP'"
+                },
+                to_currency: {
+                    type: "string",
+                    description: "The 3-letter currency code to convert to, e.g. 'EUR', 'JPY'"
+                }
+            },
+            required: ["amount", "from_currency", "to_currency"],
+            additionalProperties: false
+        }
+    }
+};
 
 // The arguments the model will try to provide (validated with Zod before execution)
 export const CurrencyArgsSchema = z.object({

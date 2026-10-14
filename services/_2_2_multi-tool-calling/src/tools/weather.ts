@@ -1,4 +1,29 @@
 import { z } from "zod";
+import { ToolDefinition } from "../utils/types";
+
+export const weatherToolDefinition: ToolDefinition = {
+    type: "function",
+    function: {
+        name: "get_weather",
+        description: "Get the current weather conditions or temperature for a specific city. Use this ONLY when the user asks about weather, temperature, or current conditions. Do NOT use this to get the local time.",
+        parameters: {
+            type: "object",
+            properties: {
+                city: {
+                    type: "string",
+                    description: "The name of the city, e.g. 'London', 'Tokyo'"
+                },
+                unit: {
+                    type: "string",
+                    description: "Temperature unit. Defaults to celsius.",
+                    enum: ["celsius", "fahrenheit"]
+                }
+            },
+            required: ["city"],
+            additionalProperties: false
+        }
+    }
+};
 
 // The arguments the model will try to provide (validated with Zod before execution)
 export const WeatherArgsSchema = z.object({

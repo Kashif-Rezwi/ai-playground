@@ -1,11 +1,14 @@
-import { getWeather, WeatherArgsSchema } from "./weather";
-import { getTime, TimeArgsSchema } from "./time";
-import { convertCurrency, CurrencyArgsSchema } from "./currency";
+import { getWeather, WeatherArgsSchema, weatherToolDefinition } from "./weather";
+import { getTime, TimeArgsSchema, timeToolDefinition } from "./time";
+import { convertCurrency, CurrencyArgsSchema, currencyToolDefinition } from "./currency";
 import { ToolDefinition } from "../utils/types";
-import { TOOLS as TOOL_DEFINITIONS } from "./definition";
 
-// The tools array passed to the API — the model's view, derived from definition.ts
-export const TOOLS: ToolDefinition[] = TOOL_DEFINITIONS;
+// The tools array passed to the API — the model's view
+export const TOOLS: ToolDefinition[] = [
+    weatherToolDefinition,
+    timeToolDefinition,
+    currencyToolDefinition
+];
 
 // Registry mapping tool names to their respective Zod schema and execution function
 const toolRegistry = {

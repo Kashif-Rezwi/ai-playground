@@ -216,10 +216,9 @@ services/_2_2_multi-tool-calling/
     │   └── tool-loop.ts
     └── tools/
         ├── registry.ts     ← Dispatcher: routes name → function, validates arguments
-        ├── definition.ts   ← Three tool schemas (get_weather, get_time, convert_currency)
-        ├── weather.ts      ← Ported from Phase 2.1
-        ├── time.ts         ← New: mock local time by city
-        └── currency.ts     ← New: mock exchange rates
+        ├── weather.ts      ← Tool definition and mock weather implementation
+        ├── time.ts         ← Tool definition and mock local time by city
+        └── currency.ts     ← Tool definition and mock exchange rates
 ```
 
 The chat service change from Phase 2.1 to Phase 2.2 is minimal in code but significant in behavior. It replaces the hardcoded `tool_calls[0]` with a loop over every call, and the `tool-loop.ts` helper ensures every call receives a corresponding result message even on failure. The server and CLI are two entry points over the same service; history is process-local and intended for a single-user learning session.
@@ -376,8 +375,8 @@ Once the app is working, run each of these deliberately. Each one surfaces a spe
 **Setup:** This experiment deliberately degrades description quality to observe routing errors.
 
 **Steps:**
-1. In `tools/definition.ts`, replace `get_weather`'s description with: `"Gets information about a city."`
-2. Replace `get_time`'s description with: `"Gets information about a city."`
+1. In `tools/weather.ts`, replace `get_weather`'s description with: `"Gets information about a city."`
+2. In `tools/time.ts`, replace `get_time`'s description with: `"Gets information about a city."`
 3. Restart and run these prompts, noting which tool is called each time:
    - `"What's the temperature in Madrid?"`
    - `"What time is it in Madrid?"`
