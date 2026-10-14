@@ -23,29 +23,29 @@
  *   ]
  */
 
-import fs from "fs";
-import path from "path";
-import { spawn } from "child_process";
-import readline from "readline";
-import { fileURLToPath } from "url";
+import fs from 'fs';
+import path from 'path';
+import { spawn } from 'child_process';
+import readline from 'readline';
+import { fileURLToPath } from 'url';
 
 // ─── Root ─────────────────────────────────────────────────────────────────────
 
-const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 // ─── ANSI helpers ─────────────────────────────────────────────────────────────
 
 const ansi = {
-    hideCursor: "\x1b[?25l",
-    showCursor: "\x1b[?25h",
-    moveUp: (n) => `\x1b[${n}A`,
-    clearLine: "\x1b[2K\r",
-    reset: "\x1b[0m",
-    bold: "\x1b[1m",
-    dim: "\x1b[2m",
-    cyan: "\x1b[36m",
-    green: "\x1b[32m",
-    brightWhite: "\x1b[97m",
+  hideCursor: '\x1b[?25l',
+  showCursor: '\x1b[?25h',
+  moveUp: (n) => `\x1b[${n}A`,
+  clearLine: '\x1b[2K\r',
+  reset: '\x1b[0m',
+  bold: '\x1b[1m',
+  dim: '\x1b[2m',
+  cyan: '\x1b[36m',
+  green: '\x1b[32m',
+  brightWhite: '\x1b[97m',
 };
 
 const write = (str) => process.stdout.write(str);
@@ -58,8 +58,8 @@ const write = (str) => process.stdout.write(str);
  *   "workspaces": ["apps/*", "packages/*", "services/*"]
  */
 function parseWorkspaceGlobs() {
-    const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, "package.json"), "utf8"));
-    return Array.isArray(pkg.workspaces) ? pkg.workspaces : [];
+  const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
+  return Array.isArray(pkg.workspaces) ? pkg.workspaces : [];
 }
 
 /**
@@ -72,33 +72,31 @@ function parseWorkspaceGlobs() {
  * Packages with neither are skipped entirely.
  */
 function resolveEntries(pkg, pkgDir) {
-    // Selector mode: package explicitly defines which scripts to expose
-    if (Array.isArray(pkg.selector) && pkg.selector.length > 0) {
-        return pkg.selector
-            .filter(entry => {
-                const valid = entry.label && entry.script && pkg.scripts?.[entry.script];
-                if (!valid) {
-                    console.warn(`[dev.mjs] Skipping invalid selector entry in ${pkg.name}:`, entry);
-                }
-                return valid;
-            })
-            .map(entry => ({
-                label: entry.label,
-                packageName: pkg.name,
-                script: entry.script,
-            }));
-    }
+  // Selector mode: package explicitly defines which scripts to expose
+  if (Array.isArray(pkg.selector) && pkg.selector.length > 0) {
+    return pkg.selector
+      .filter((entry) => {
+        const valid = entry.label && entry.script && pkg.scripts?.[entry.script];
+        if (!valid) {
+          console.warn(`[dev.mjs] Skipping invalid selector entry in ${pkg.name}:`, entry);
+        }
+        return valid;
+      })
+      .map((entry) => ({
+        label: entry.label,
+        packageName: pkg.name,
+        script: entry.script,
+      }));
+  }
 
-    // Default mode: use the dev script
-    if (pkg.scripts?.dev) {
-        const label = pkg.name.includes("/")
-            ? pkg.name.split("/")[1]
-            : pkg.name;
-        return [{ label, packageName: pkg.name, script: "dev" }];
-    }
+  // Default mode: use the dev script
+  if (pkg.scripts?.dev) {
+    const label = pkg.name.includes('/') ? pkg.name.split('/')[1] : pkg.name;
+    return [{ label, packageName: pkg.name, script: 'dev' }];
+  }
 
-    // No dev script and no selector — skip this package
-    return [];
+  // No dev script and no selector — skip this package
+  return [];
 }
 
 /**
@@ -107,22 +105,22 @@ function resolveEntries(pkg, pkgDir) {
  * Returns entries sorted alphabetically by label.
  */
 function discoverServices() {
-    const globs = parseWorkspaceGlobs();
-    const runnableGlobs = globs.filter(g => !g.startsWith("packages/"));
-    const entries = [];
+  const globs = parseWorkspaceGlobs();
+  const runnableGlobs = globs.filter((g) => !g.startsWith('packages/'));
+  const entries = [];
 
-    for (const glob of runnableGlobs) {
-        const pattern = path.join(ROOT, glob, "package.json");
-        const matches = fs.globSync(pattern);
+  for (const glob of runnableGlobs) {
+    const pattern = path.join(ROOT, glob, 'package.json');
+    const matches = fs.globSync(pattern);
 
-        for (const pkgJsonPath of matches) {
-            const pkg = JSON.parse(fs.readFileSync(pkgJsonPath, "utf8"));
-            const pkgDir = path.dirname(pkgJsonPath);
-            entries.push(...resolveEntries(pkg, pkgDir));
-        }
+    for (const pkgJsonPath of matches) {
+      const pkg = JSON.parse(fs.readFileSync(pkgJsonPath, 'utf8'));
+      const pkgDir = path.dirname(pkgJsonPath);
+      entries.push(...resolveEntries(pkg, pkgDir));
     }
+  }
 
-    return entries.sort((a, b) => a.label.localeCompare(b.label));
+  return entries.sort((a, b) => a.label.localeCompare(b.label));
 }
 
 // ─── Render ───────────────────────────────────────────────────────────────────
@@ -135,34 +133,36 @@ let linesRendered = 0;
  * Pure function — no side effects, no terminal writes.
  */
 function buildLines(services, selectedIndex) {
-    const lines = [];
+  const lines = [];
 
-    lines.push(`  ${ansi.bold}${ansi.cyan}⚡ AI Playground${ansi.reset}  ${ansi.dim}dev selector${ansi.reset}`);
-    lines.push(`  ${ansi.dim}↑ ↓  navigate    Enter  run    Ctrl+C  exit${ansi.reset}`);
-    lines.push(`  ${ansi.dim}${"─".repeat(46)}${ansi.reset}`);
-    lines.push(""); // spacer
+  lines.push(
+    `  ${ansi.bold}${ansi.cyan}⚡ AI Playground${ansi.reset}  ${ansi.dim}dev selector${ansi.reset}`,
+  );
+  lines.push(`  ${ansi.dim}↑ ↓  navigate    Enter  run    Ctrl+C  exit${ansi.reset}`);
+  lines.push(`  ${ansi.dim}${'─'.repeat(46)}${ansi.reset}`);
+  lines.push(''); // spacer
 
-    for (let i = 0; i < services.length; i++) {
-        const isSelected = i === selectedIndex;
+  for (let i = 0; i < services.length; i++) {
+    const isSelected = i === selectedIndex;
 
-        const cursor = isSelected
-            ? `${ansi.bold}${ansi.cyan}›${ansi.reset}`
-            : `${ansi.dim} ${ansi.reset}`;
+    const cursor = isSelected
+      ? `${ansi.bold}${ansi.cyan}›${ansi.reset}`
+      : `${ansi.dim} ${ansi.reset}`;
 
-        const label = isSelected
-            ? `${ansi.bold}${ansi.brightWhite}${services[i].label}${ansi.reset}`
-            : `${ansi.dim}${services[i].label}${ansi.reset}`;
+    const label = isSelected
+      ? `${ansi.bold}${ansi.brightWhite}${services[i].label}${ansi.reset}`
+      : `${ansi.dim}${services[i].label}${ansi.reset}`;
 
-        // Show the exact npm command only on the selected row
-        const hint = isSelected
-            ? `  ${ansi.dim}npm run ${services[i].script} --workspace ${services[i].packageName}${ansi.reset}`
-            : "";
+    // Show the exact npm command only on the selected row
+    const hint = isSelected
+      ? `  ${ansi.dim}npm run ${services[i].script} --workspace ${services[i].packageName}${ansi.reset}`
+      : '';
 
-        lines.push(`  ${cursor} ${label}${hint}`);
-    }
+    lines.push(`  ${cursor} ${label}${hint}`);
+  }
 
-    lines.push(""); // bottom padding
-    return lines;
+  lines.push(''); // bottom padding
+  return lines;
 }
 
 /**
@@ -175,94 +175,95 @@ function buildLines(services, selectedIndex) {
  * Never clears the whole screen — that breaks VS Code's integrated terminal.
  */
 function render(services, selectedIndex) {
-    const lines = buildLines(services, selectedIndex);
-    const out = [];
+  const lines = buildLines(services, selectedIndex);
+  const out = [];
 
-    if (linesRendered > 0) {
-        out.push(ansi.moveUp(linesRendered));
-    }
+  if (linesRendered > 0) {
+    out.push(ansi.moveUp(linesRendered));
+  }
 
-    for (const line of lines) {
-        out.push(`${ansi.clearLine}${line}\n`);
-    }
+  for (const line of lines) {
+    out.push(`${ansi.clearLine}${line}\n`);
+  }
 
-    write(out.join(""));
-    linesRendered = lines.length;
+  write(out.join(''));
+  linesRendered = lines.length;
 }
 
 // ─── Launch ───────────────────────────────────────────────────────────────────
 
 function launch(service) {
-    write(ansi.showCursor);
-    write("\n");
-    console.log(
-        `  ${ansi.bold}${ansi.green}▶ ${service.label}${ansi.reset}` +
-        `  ${ansi.dim}npm run ${service.script} --workspace ${service.packageName}${ansi.reset}\n`
-    );
+  write(ansi.showCursor);
+  write('\n');
+  console.log(
+    `  ${ansi.bold}${ansi.green}▶ ${service.label}${ansi.reset}` +
+      `  ${ansi.dim}npm run ${service.script} --workspace ${service.packageName}${ansi.reset}\n`,
+  );
 
-    const child = spawn(
-        "npm",
-        ["run", service.script, "--workspace", service.packageName],
-        { stdio: "inherit", shell: true }
-    );
+  const child = spawn('npm', ['run', service.script, '--workspace', service.packageName], {
+    stdio: 'inherit',
+    shell: true,
+  });
 
-    child.on("exit", (code) => process.exit(code ?? 0));
+  child.on('exit', (code) => process.exit(code ?? 0));
 }
 
 // ─── Input ────────────────────────────────────────────────────────────────────
 
 function listenForInput(services, state) {
-    readline.emitKeypressEvents(process.stdin);
-    if (process.stdin.isTTY) process.stdin.setRawMode(true);
+  readline.emitKeypressEvents(process.stdin);
+  if (process.stdin.isTTY) process.stdin.setRawMode(true);
 
-    process.stdin.on("keypress", (_str, key) => {
-        if (!key) return;
+  process.stdin.on('keypress', (_str, key) => {
+    if (!key) return;
 
-        if (key.ctrl && key.name === "c") {
-            write(ansi.showCursor + "\n");
-            process.exit(0);
-        }
+    if (key.ctrl && key.name === 'c') {
+      write(ansi.showCursor + '\n');
+      process.exit(0);
+    }
 
-        if (key.name === "up") {
-            state.selected = (state.selected - 1 + services.length) % services.length;
-            render(services, state.selected);
-        }
+    if (key.name === 'up') {
+      state.selected = (state.selected - 1 + services.length) % services.length;
+      render(services, state.selected);
+    }
 
-        if (key.name === "down") {
-            state.selected = (state.selected + 1) % services.length;
-            render(services, state.selected);
-        }
+    if (key.name === 'down') {
+      state.selected = (state.selected + 1) % services.length;
+      render(services, state.selected);
+    }
 
-        if (key.name === "return") {
-            process.stdin.setRawMode(false);
-            process.stdin.pause();
-            launch(services[state.selected]);
-        }
-    });
+    if (key.name === 'return') {
+      process.stdin.setRawMode(false);
+      process.stdin.pause();
+      launch(services[state.selected]);
+    }
+  });
 }
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 function main() {
-    const services = discoverServices();
+  const services = discoverServices();
 
-    if (services.length === 0) {
-        console.error("No runnable services found (no package with a `dev` script or `selector` field).");
-        process.exit(1);
-    }
+  if (services.length === 0) {
+    console.error(
+      'No runnable services found (no package with a `dev` script or `selector` field).',
+    );
+    process.exit(1);
+  }
 
-    const state = { selected: 0 };
+  const state = { selected: 0 };
 
-    write(ansi.hideCursor);
-    render(services, state.selected);
-    listenForInput(services, state);
+  write(ansi.hideCursor);
+  render(services, state.selected);
+  listenForInput(services, state);
 
-    // Always restore cursor on exit — including unexpected crashes
-    process.on("exit", () => write(ansi.showCursor));
-    process.on("SIGINT", () => {
-        write(ansi.showCursor + "\n");
-        process.exit(0);
-    });
+  // Always restore cursor on exit — including unexpected crashes
+  process.on('exit', () => write(ansi.showCursor));
+  process.on('SIGINT', () => {
+    write(ansi.showCursor + '\n');
+    process.exit(0);
+  });
 }
 
 main();

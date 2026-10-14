@@ -1,5 +1,7 @@
 import dotenv from "dotenv";
-dotenv.config({ path: "../../.env" });
+import path from "path";
+
+dotenv.config({ path: path.resolve(__dirname, "../../../../.env") });
 
 const CONFIG = {
     LLM_API_KEY: process.env.LLM_API_KEY || "",

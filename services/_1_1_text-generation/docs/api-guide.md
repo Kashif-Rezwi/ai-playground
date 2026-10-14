@@ -6,7 +6,7 @@ Single-turn LLM endpoint on top of [Groq](https://console.groq.com): one prompt 
 response** out, nothing reshaped. This is the contract; for what the parameters *mean* — and experiments
 that prove it — see [`basic-text-generation.md`](./basic-text-generation.md).
 
-`POST http://localhost:3001/generate` · `Content-Type: application/json` · no auth on this route (the Groq
+`POST http://localhost:3101/generate` · `Content-Type: application/json` · no auth on this route (the Groq
 key stays server-side) · not streamed.
 
 ---
@@ -18,7 +18,7 @@ key stays server-side) · not streamed.
 npm run dev:text-gen     # or: npm run dev → select "text-generation"
 ```
 
-The service exits at boot if `LLM_API_KEY` is missing and listens on `PORT` (default `3001`). Health check:
+The service exits at boot if `LLM_API_KEY` is missing and listens on `PORT` (default `3101`). Health check:
 `GET /` → `{"status":"ok","message":"Text Generation Service is running!"}`.
 
 ---
@@ -46,7 +46,7 @@ Model: `openai/gpt-oss-20b` — 131,072-token context, up to 65,536 output token
 The payload behind the response below:
 
 ```bash
-curl -X POST http://localhost:3001/generate \
+curl -X POST http://localhost:3101/generate \
   -H "Content-Type: application/json" \
   -d '{
     "systemPrompt": "You are a deeply introspective philosopher; answer every question through existential wisdom, keeping responses under 100 characters total.",
@@ -60,7 +60,7 @@ curl -X POST http://localhost:3001/generate \
 Cutting it short — `finish_reason` becomes `"length"` and `content` comes back empty:
 
 ```bash
-curl -X POST http://localhost:3001/generate \
+curl -X POST http://localhost:3101/generate \
   -H "Content-Type: application/json" \
   -d '{"systemPrompt": "You are a concise assistant.", "prompt": "List and explain ten common software design patterns in detail.", "maxTokens": 40}'
 ```

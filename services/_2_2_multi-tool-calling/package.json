@@ -5,7 +5,9 @@
   "main": "server.js",
   "scripts": {
     "dev": "npx tsx src/server.ts",
-    "cli": "npx tsx src/cli.ts"
+    "cli": "npx tsx src/cli.ts",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
   },
   "keywords": [],
   "author": "",

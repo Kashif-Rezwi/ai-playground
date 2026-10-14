@@ -1,37 +1,63 @@
 # AI Playground
 
-A minimal, stable, scalable monorepo setup designed to house future apps, services, and shared packages. 
+This repository is a practical AI engineering curriculum. Each numbered service demonstrates one LLM concept end to end, with an emphasis on understanding the implementation before introducing shared abstractions.
 
-## Architecture Philosophy
+## Repository shape
 
-- **packages**: Shared logic, utilities, UI components, and configs.
-- **services**: Backend runtime services, APIs, and background workers.
-- **apps**: Frontend applications, CLIs, and specific end-user use-cases.
+- `services/_1_*` and `services/_2_*`: focused learning labs for generation, memory, streaming, structured output, and tool calling.
+- `packages/*`: reserved for code shared by more than one workspace.
+- `configs`: shared TypeScript, ESLint, and Prettier configuration.
+- `docs`: the learning roadmap and architecture documentation.
 
-## Project Setup
+The labs intentionally keep some implementation details local so each concept remains easy to study. They are runnable examples, not one combined production service.
 
-This workspace uses `npm` and `TurboRepo` for fast, scalable dependency management and task execution.
+## Prerequisites
 
-### Prerequisites
-- [Node.js](https://nodejs.org/) (LTS recommended)
+- [Node.js](https://nodejs.org/) LTS
+- An API key in `.env` as required by the service being run
 
-### Installation
+Install dependencies from the repository root:
 
-1. Install dependencies:
-   ```bash
-   npm install
-   ```
+```bash
+npm install
+```
 
-2. Start the development environment:
-   ```bash
-   npm run dev
-   ```
+Copy `.env.example` to `.env`, then choose a workflow.
 
-## Included Tooling
+## Development workflows
 
-- **TypeScript** - Strict mode by default.
-- **TurboRepo** - For caching and running tasks efficiently.
-- **ESLint & Prettier** - Code quality and formatting.
+Run the interactive selector. It starts one workspace at a time:
+
+```bash
+npm run dev
+```
+
+Run a workspace directly from the root:
+
+```bash
+npm run dev:text-gen
+npm run dev:convo
+npm run dev:streaming
+npm run dev:structured
+npm run dev:single-tool
+npm run dev:multi-tool
+```
+
+Default backend ports are `3101` through `3106` for the numbered services in roadmap order. Set `PORT` to override a service's default.
+
+## Validation
+
+Root commands run the checks provided by each workspace:
+
+```bash
+npm run format:check
+npm run lint
+npm run typecheck
+npm run build
+npm test
+```
+
+Some labs do not yet expose every validation script. The root commands use npm's `--if-present` behavior while those workspace contracts are being normalized.
 
 ## Documentation
 

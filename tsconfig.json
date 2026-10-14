@@ -1,12 +1,9 @@
 {
-    "extends": "./configs/tsconfig/base.json",
-    "compilerOptions": {
-        "strict": true,
-        "target": "ES2022"
-    },
-    "files": [],
-    "exclude": [
-        "node_modules",
-        "dist"
-    ]
+  "extends": "./configs/tsconfig/base.json",
+  "compilerOptions": {
+    "strict": true,
+    "target": "ES2022"
+  },
+  "files": [],
+  "exclude": ["node_modules", "dist"]
 }

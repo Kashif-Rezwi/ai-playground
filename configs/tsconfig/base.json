@@ -1,11 +1,11 @@
 {
-    "compilerOptions": {
-        "esModuleInterop": true,
-        "skipLibCheck": true,
-        "forceConsistentCasingInFileNames": true,
-        "module": "node16",
-        "moduleResolution": "node16",
-        "resolveJsonModule": true,
-        "isolatedModules": true
-    }
+  "compilerOptions": {
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "module": "node16",
+    "moduleResolution": "node16",
+    "resolveJsonModule": true,
+    "isolatedModules": true
+  }
 }
