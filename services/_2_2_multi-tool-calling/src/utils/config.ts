@@ -14,6 +14,11 @@ const CONFIG = {
     // Tool Configuration
     TOOL_CHOICE: "auto" as "auto" | "required" | "none",
     MAX_TOOL_ITERATIONS: 5,   // multi-tool phase legitimately needs 2–3 rounds; cap at 5
+
+    // Retry Configuration
+    MAX_TOOL_CALL_RETRIES: 3,
+    TEMPERATURE_RETRY_STEP: 0.2,
+    MIN_TEMPERATURE: 0.2,
 };
 
 export default CONFIG;

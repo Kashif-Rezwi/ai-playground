@@ -27,7 +27,14 @@ const chatController = {
             return res.status(200).json(chatResponse);
         } catch (error) {
             console.error("Error generating chat response:", error);
-            return res.status(500).json({ error: "Internal server error" });
+
+            // Determine the appropriate error message and status code
+            const message = error instanceof Error ? error.message : "Internal server error";
+
+            // Tool-call generation exhausted its retries → 422; anything else (API, network, config) → 500
+            const status = message.includes("Failed to generate valid tool calls") ? 422 : 500;
+
+            return res.status(status).json({ error: message });
         }
     },
 
