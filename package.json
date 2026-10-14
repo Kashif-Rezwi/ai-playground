@@ -1,28 +1,33 @@
 {
-    "name": "ai-playground",
-    "version": "1.0.0",
-    "private": true,
-    "workspaces": [
-        "apps/*",
-        "packages/*",
-        "services/*"
-    ],
-    "scripts": {
-        "dev": "node scripts/dev.mjs",
-        "dev:text-gen": "npm run dev --workspace @ai-playground/text-generation",
-        "dev:chat-api": "npm run dev --workspace @ai-playground/chat-api",
-        "dev:convo": "npm run dev --workspace @ai-playground/conversation-and-memory",
-        "dev:streaming": "npm run dev --workspace @ai-playground/streaming",
-        "dev:structured": "npm run dev --workspace @ai-playground/structured-output",
-        "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\""
-    },
-    "devDependencies": {
-        "typescript": "^5.0.0",
-        "eslint": "^8.0.0",
-        "prettier": "^3.0.0",
-        "dotenv": "^16.0.0",
-        "@typescript-eslint/parser": "^7.0.0",
-        "@typescript-eslint/eslint-plugin": "^7.0.0",
-        "eslint-config-prettier": "^9.0.0"
-    }
+  "name": "ai-playground",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*",
+    "services/*"
+  ],
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "dev:text-gen": "npm run dev --workspace @ai-playground/text-generation",
+    "dev:convo": "npm run dev --workspace @ai-playground/conversation-and-memory",
+    "dev:multi-tool": "npm run dev --workspace multi-tool-calling",
+    "dev:single-tool": "npm run dev --workspace single-tool-calling",
+    "dev:streaming": "npm run dev --workspace @ai-playground/streaming",
+    "dev:structured": "npm run dev --workspace @ai-playground/structured-output",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
+    "format:check": "prettier --check package.json README.md tsconfig.json .eslintrc.js \"configs/**/*.{js,json}\" \"scripts/**/*.mjs\"",
+    "lint": "npm run lint --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "eslint": "^8.0.0",
+    "prettier": "^3.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "eslint-config-prettier": "^9.0.0"
+  }
 }
