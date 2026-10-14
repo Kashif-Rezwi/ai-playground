@@ -1,25 +1,40 @@
 import { Request, Response } from "express";
+import { z } from "zod";
 import CONFIG from "../utils/config";
 import { SYSTEM_PROMPT } from "../utils/prompts";
-import { GenerateChatRequest } from "../utils/types";
 import chatService from "../services/chat.service";
+
+const generateChatRequestSchema = z.object({
+    systemPrompt: z.string().optional(),
+    userPrompt: z.string().trim().min(1, "User prompt is required"),
+    temperature: z.number().min(0).max(2).optional(),
+    maxTokens: z.number().int().positive().optional(),
+    topP: z.number().min(0).max(1).optional(),
+});
 
 const chatController = {
     async generate(req: Request, res: Response): Promise<Response> {
+        const parsedRequest = generateChatRequestSchema.safeParse(req.body);
+
+        if (!parsedRequest.success) {
+            return res.status(400).json({
+                error: "Invalid chat request",
+                details: parsedRequest.error.issues.map((issue) => ({
+                    path: issue.path.join("."),
+                    message: issue.message,
+                })),
+            });
+        }
+
         const {
             systemPrompt = SYSTEM_PROMPT,
-            userPrompt = "",
+            userPrompt,
             temperature = CONFIG.TEMPERATURE,
             maxTokens = CONFIG.MAX_TOKENS,
-            topP = CONFIG.TOP_P
-        }: GenerateChatRequest = req.body;
+            topP = CONFIG.TOP_P,
+        } = parsedRequest.data;
 
         try {
-            // Validate userPrompt
-            if (!userPrompt) {
-                return res.status(400).json({ error: "User prompt is required" });
-            };
-
             // Call the service to generate text
             const chatResponse = await chatService.generateText({ systemPrompt, userPrompt, temperature, maxTokens, topP });
 

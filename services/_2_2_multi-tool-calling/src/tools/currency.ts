@@ -28,7 +28,7 @@ export function convertCurrency(args: CurrencyArgs): string {
         const fromRate = MOCK_RATES[from];
         const toRate = MOCK_RATES[to];
 
-        if (!fromRate || !toRate) {
+        if (fromRate === undefined || toRate === undefined) {
             return JSON.stringify({
                 error: `Exchange rate not found for ${!fromRate ? from : to}. Supported currencies: USD, EUR, GBP, JPY, INR.`
             });

@@ -2,7 +2,8 @@ import { APIError } from "groq-sdk";
 import type { ChatCompletion, ChatCompletionCreateParamsNonStreaming } from "groq-sdk/resources/chat/completions";
 import CONFIG from "../utils/config";
 import { GenerateChatRequest, GenerateChatResponse, Message, ToolTrace } from "../utils/types";
-import { executeTool, TOOLS } from "../tools/registry";
+import { TOOLS } from "../tools/registry";
+import { executeToolBatch } from "../utils/tool-loop";
 import groqClient from "./llm.service";
 
 let conversationHistory: Message[] = [];
@@ -110,10 +111,21 @@ const chatService = {
                 };
             }
 
-            // When the model has returned tool calls to execute. Increment the iteration counter 
-            // and check against the maximum allowed iterations to prevent infinite loops.
+            // Record and execute the complete batch before deciding whether another model
+            // iteration is allowed. Every tool call must receive a result message.
             iterations += 1;
-            if (iterations > CONFIG.MAX_TOOL_ITERATIONS) {
+            conversationHistory.push(assistantMessage);
+
+            // Iterate over EVERY tool call — parallel or sequential.
+            const batchTraces = executeToolBatch(assistantMessage.tool_calls, (message) => {
+                conversationHistory.push(message);
+                if (message.role === "tool") {
+                    console.log(`[TOOL] Result: ${message.content}`);
+                }
+            });
+            toolTraces.push(...batchTraces);
+
+            if (iterations >= CONFIG.MAX_TOOL_ITERATIONS) {
                 const note = `Tool iteration limit (${CONFIG.MAX_TOOL_ITERATIONS}) reached — stopping to avoid an infinite loop.`;
                 console.warn(note);
                 conversationHistory.push({ role: "assistant", content: note });
@@ -127,33 +139,6 @@ const chatService = {
                     finishReason: "length",
                     totalLatencyMs: Date.now() - startedAt,
                 };
-            }
-
-            // Append the assistant message to history, even if it has no content (tool calls only)
-            conversationHistory.push(assistantMessage);
-
-            // Iterate over EVERY tool call — parallel or sequential.
-            for (const toolCall of assistantMessage.tool_calls) {
-                if (toolCall.type !== "function") continue;
-
-                const toolName = toolCall.function.name;
-                const toolArgs = toolCall.function.arguments;
-
-                console.log(`[TOOL] Executing: ${toolName}(${toolArgs})`);
-
-                let toolResult: string;
-                try {
-                    toolResult = executeTool(toolName, toolArgs);
-                } catch {
-                    // If the tool execution throws an unexpected error, we catch it and return a generic error message.
-                    toolResult = JSON.stringify({ error: "Tool execution failed unexpectedly." });
-                }
-         
-                console.log(`[TOOL] Result: ${toolResult}`);
-
-                conversationHistory.push({ role: "tool", tool_call_id: toolCall.id, content: toolResult });
-
-                toolTraces.push({ name: toolName, arguments: toolArgs, result: toolResult });
             }
         }
     },

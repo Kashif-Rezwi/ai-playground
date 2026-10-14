@@ -25,7 +25,7 @@ const MOCK_TIMEZONE_DB: Record<string, string> = {
 export function getTime(args: TimeArgs): string {
     try {
         const { city } = args;
-        const normalizedCity = city.toLowerCase();
+        const normalizedCity = city.trim().toLowerCase();
         const timeZone = MOCK_TIMEZONE_DB[normalizedCity];
 
         if (!timeZone) {
