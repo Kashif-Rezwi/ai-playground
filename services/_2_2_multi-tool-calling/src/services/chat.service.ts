@@ -21,6 +21,7 @@ const chatService = {
         let inputTokens = 0;
         let outputTokens = 0;
         const toolTraces: ToolTrace[] = [];
+        let iterations = 0; // model→tool rounds this turn (guarded by MAX_TOOL_ITERATIONS)
 
         // If tool_calls, execute ALL of them → feed results back → call again.
         // Parallel tool calls arrive as one assistant message with multiple tool_calls entries.
@@ -51,7 +52,26 @@ const chatService = {
                     tokenCount: inputTokens + outputTokens, // a tool turn costs 2+ API calls
                     tool: lastTool,
                     tools: toolTraces,
+                    iterations,
                     finishReason: rawResponse.choices[0].finish_reason,
+                    totalLatencyMs: Date.now() - startedAt,
+                };
+            }
+
+            // When the model has returned tool calls to execute. Increment the iteration counter 
+            // and check against the maximum allowed iterations to prevent infinite loops.
+            iterations += 1;
+            if (iterations > CONFIG.MAX_TOOL_ITERATIONS) {
+                const note = `Tool iteration limit (${CONFIG.MAX_TOOL_ITERATIONS}) reached — stopping to avoid an infinite loop.`;
+                console.warn(note);
+                conversationHistory.push({ role: "assistant", content: note });
+                return {
+                    messages: conversationHistory,
+                    tokenCount: inputTokens + outputTokens,
+                    tool: toolTraces.length > 0 ? toolTraces[toolTraces.length - 1] : null,
+                    tools: toolTraces,
+                    iterations,
+                    finishReason: "length",
                     totalLatencyMs: Date.now() - startedAt,
                 };
             }
