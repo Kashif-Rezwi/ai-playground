@@ -439,7 +439,7 @@ npm run cli --workspace multi-tool-calling
 npm run dev --workspace multi-tool-calling
 ```
 
-The CLI commands are `/history`, `/clear`, and `/exit`. The server listens on port `3001` by default, or `PORT` when configured. Its routes are:
+The CLI commands are `/history`, `/clear`, and `/exit`. The server listens on port `3106` by default, or `PORT` when configured. Its routes are:
 
 ```text
 GET    /api/health
