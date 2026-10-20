@@ -9,6 +9,10 @@ const CONFIG = {
   MAX_TOKENS: 6000,
   TEMPERATURE: 0.2,
   TOP_P: 1,
+
+// Tool Configuration
+  TOOL_CHOICE: 'auto' as 'auto' | 'required' | 'none',
+  MAX_TOOL_ITERATIONS: 5,
 };
 
 export default CONFIG;
