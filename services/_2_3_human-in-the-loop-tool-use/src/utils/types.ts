@@ -1,4 +1,7 @@
-import type { ChatCompletionMessageParam, ChatCompletionTool } from 'groq-sdk/resources/chat/completions';
+import type {
+  ChatCompletionMessageParam,
+  ChatCompletionTool,
+} from 'groq-sdk/resources/chat/completions';
 
 // Define the Message type based on the ChatCompletionMessageParam from the groq-sdk
 export type Message = ChatCompletionMessageParam;
@@ -19,4 +22,5 @@ export interface GenerateChatRequest {
 export interface GenerateChatResponse {
   messages: Message[];
   tokenCount: number;
+  retries: number;
 }
