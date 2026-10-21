@@ -15,6 +15,7 @@
     "dev:single-tool": "npm run dev --workspace single-tool-calling",
     "dev:streaming": "npm run dev --workspace @ai-playground/streaming",
     "dev:structured": "npm run dev --workspace @ai-playground/structured-output",
+    "dev:human-loop": "npm run dev --workspace human-in-the-loop-tool-use",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
     "format:check": "prettier --check package.json README.md tsconfig.json .eslintrc.js \"configs/**/*.{js,json}\" \"scripts/**/*.mjs\"",
     "lint": "npm run lint --workspaces --if-present",
