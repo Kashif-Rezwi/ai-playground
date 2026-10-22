@@ -6,6 +6,7 @@ const chatRouter = express.Router();
 // Run lifecycle
 chatRouter.post('/generate', chatController.generate);
 chatRouter.get('/runs/:runId', chatController.getRun);
+chatRouter.get('/runs/:runId/stream', chatController.streamRun);  // SSE
 
 // Approval decisions
 chatRouter.post('/approvals/:approvalId/approve', chatController.approve);

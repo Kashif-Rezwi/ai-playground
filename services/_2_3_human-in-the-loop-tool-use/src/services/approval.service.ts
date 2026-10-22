@@ -1,6 +1,12 @@
 import { v4 as uuidv4 } from 'uuid';
+import { EventEmitter } from 'events';
 import type { Approval, Run, RunStatus, Message } from '../utils/types.js';
 import CONFIG from '../utils/config.js';
+
+// ── Event bus ─────────────────────────────────────────────────────────────
+// SSE controllers subscribe here. The service layer never knows about HTTP.
+// Events: 'run_started', 'approval_required', 'approval_decided', 'run_status_changed', 'run_completed', 'run_failed'
+export const runEvents = new EventEmitter();
 
 // In-memory store
 const runs = new Map<string, Run>();
@@ -28,6 +34,7 @@ const approvalService = {
             topP: params.topP,
         };
         runs.set(run.runId, run);
+        runEvents.emit('run_started', { runId: run.runId });
         return run;
     },
 
@@ -55,6 +62,10 @@ const approvalService = {
         };
 
         run.approvals.push(approval);
+        runEvents.emit('approval_required', {
+            runId,
+            approval: { approvalId: approval.approvalId, toolName, toolArguments, expiresAt: approval.expiresAt },
+        });
         return approval;
     },
 
@@ -80,6 +91,7 @@ const approvalService = {
         if (status === 'completed' || status === 'failed' || status === 'cancelled') {
             run.completedAt = Date.now();
         }
+        runEvents.emit('run_status_changed', { runId, status, finalAnswer: run.finalAnswer, error: run.error });
     },
 
     // Record a human decision on a single approval.
@@ -90,6 +102,7 @@ const approvalService = {
 
         approval.status = decision;
         approval.decidedAt = Date.now();
+        runEvents.emit('approval_decided', { runId: approval.runId, approvalId, decision });
         return approval;
     },
 
