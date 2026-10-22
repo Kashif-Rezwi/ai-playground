@@ -1,5 +1,5 @@
-import { executeTool } from '../tools/registry';
-import { Message } from './types';
+import { executeTool } from '../tools/registry.js';
+import type { Message } from './types.js';
 
 export interface ToolCallInput {
   id: string;

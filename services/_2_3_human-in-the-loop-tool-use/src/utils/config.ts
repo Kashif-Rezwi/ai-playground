@@ -1,7 +1,10 @@
 import dotenv from 'dotenv';
-import path from 'path';
+import { fileURLToPath } from 'url';
+import { dirname, resolve } from 'path';
 
-dotenv.config({ path: path.resolve(__dirname, '../../../../.env') });
+// __dirname is not available in ESM — reconstruct it from import.meta.url
+const __dirname = dirname(fileURLToPath(import.meta.url));
+dotenv.config({ path: resolve(__dirname, '../../../../.env') });
 
 const CONFIG = {
   LLM_API_KEY: process.env.LLM_API_KEY || '',

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { ToolDefinition } from "../utils/types";
+import type { ToolDefinition } from "../utils/types.js";
 
 export const timeToolDefinition: ToolDefinition = {
     type: "function",
