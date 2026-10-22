@@ -18,6 +18,9 @@ const CONFIG = {
   MAX_TOOL_CALL_RETRIES: 3,
   TEMPERATURE_RETRY_STEP: 0.2,
   MIN_TEMPERATURE: 0.2,
+
+  // Approval TTL: how long a pending approval remains valid (5 minutes)
+  APPROVAL_TTL_MS: 5 * 60 * 1000,
 };
 
 export default CONFIG;
