@@ -3,7 +3,7 @@ import type {
   ChatCompletion,
   ChatCompletionCreateParamsNonStreaming,
 } from 'groq-sdk/resources/chat/completions';
-import CONFIG from '../utils/config';
+import CONFIG from '../utils/config.js';
 
 if (!CONFIG.LLM_API_KEY) {
   throw new Error('LLM_API_KEY is not set in the environment variables.');

@@ -2,6 +2,7 @@
   "name": "human-in-the-loop-tool-use",
   "version": "1.0.0",
   "description": "A human-in-the-loop tool use service that demonstrates approval before tool execution.",
+  "type": "module",
   "main": "server.js",
   "scripts": {
     "dev": "npx tsx src/server.ts",
@@ -12,10 +13,12 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@types/uuid": "^9.0.8",
     "dotenv": "^16.6.1",
     "express": "^5.2.1",
     "groq-sdk": "^1.6.0",
     "tiktoken": "^1.0.22",
+    "uuid": "^9.0.1",
     "zod": "^4.3.6"
   },
   "devDependencies": {

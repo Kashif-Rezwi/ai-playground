@@ -1,7 +1,7 @@
-import { ToolDefinition } from "../utils/types";
-import { convertCurrency, CurrencyArgsSchema, currencyToolDefinition } from "./currency";
-import { getTime, TimeArgsSchema, timeToolDefinition } from "./time";
-import { getWeather, WeatherArgsSchema, weatherToolDefinition } from "./weather";
+import type { ToolDefinition } from "../utils/types.js";
+import { convertCurrency, CurrencyArgsSchema, currencyToolDefinition } from "./currency.js";
+import { getTime, TimeArgsSchema, timeToolDefinition } from "./time.js";
+import { getWeather, WeatherArgsSchema, weatherToolDefinition } from "./weather.js";
 
 // The tools array passed to the API — the model's view
 export const TOOLS: ToolDefinition[] = [
